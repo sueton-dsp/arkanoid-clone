@@ -568,7 +568,10 @@ function update(){
   if(balls.length===0){
     lives--;updateUI();SFX.lose();
     state=lives<=0?'gameover':'dead';
-    if(state==='gameover')SFX.gameover();
+    if(state==='gameover'){
+      SFX.gameover();
+      setTimeout(()=>lbOpen(true), 2000); // Leaderboard automatisch nach 2s öffnen
+    }
   }
 
   // Laser
@@ -613,7 +616,7 @@ function update(){
 
   if(blocks.length===0){
     level++;SFX.levelup();
-    if(level>LEVELS.length+2){state='win';SFX.win();}
+    if(level>LEVELS.length+2){state='win';SFX.win();setTimeout(()=>lbOpen(true),2000);}
     else{state='levelup';initLevel(level);balls=[initBall(true)];stickyBall=balls[0];updateUI();}
   }
 }
