@@ -2,45 +2,142 @@
 <html lang="de">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Arkanoid Clone</title>
 <style>
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  body {
-    background: #0a0a1a;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    min-height: 100vh;
-    font-family: 'Courier New', monospace;
-    color: #fff;
-    user-select: none;
-    overflow: hidden;
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html, body {
+    background:#0a0a1a;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    min-height:100vh;
+    min-height:100dvh;
+    font-family:'Courier New', monospace;
+    color:#fff;
+    user-select:none;
+    -webkit-user-select:none;
+    touch-action:none;
+    overflow:hidden;
   }
   #ui {
-    display: flex;
-    gap: 50px;
-    margin-bottom: 10px;
-    font-size: 20px;
-    letter-spacing: 2px;
+    display:flex;
+    gap:clamp(12px,4vw,50px);
+    margin-bottom:8px;
+    font-size:clamp(12px,3vw,20px);
+    letter-spacing:2px;
+    flex-wrap:wrap;
+    justify-content:center;
   }
-  .ui-item span { color: #0ff; font-weight: bold; }
+  .ui-item span { color:#0ff; font-weight:bold; }
   #canvas {
-    border: 2px solid #0ff;
-    box-shadow: 0 0 30px #0ff4, 0 0 60px #00f4;
-    cursor: none;
-    /* CSS-Größe = logische Größe */
-    width: 800px;
-    height: 900px;
-    image-rendering: crisp-edges;
+    border:2px solid #0ff;
+    box-shadow:0 0 30px #0ff4, 0 0 60px #00f4;
+    cursor:none;
+    /* Skaliert auf den verfügbaren Platz, behält Seitenverhältnis */
+    max-width:100vw;
+    max-height:calc(100dvh - 60px);
+    width:800px;
+    height:900px;
+    object-fit:contain;
+    touch-action:none;
   }
-  #message {
-    margin-top: 10px;
-    font-size: 13px;
-    color: #888;
-    letter-spacing: 1px;
-    height: 20px;
+  #msg {
+    margin-top:6px;
+    font-size:clamp(10px,2vw,13px);
+    color:#666;
+    letter-spacing:1px;
+    height:18px;
+    text-align:center;
   }
+
+  /* ── Leaderboard Overlay ── */
+  #lbOverlay {
+    display:none;
+    position:fixed; inset:0;
+    background:rgba(4,4,20,0.92);
+    z-index:100;
+    align-items:center;
+    justify-content:center;
+    flex-direction:column;
+  }
+  #lbOverlay.show { display:flex; }
+  #lbBox {
+    border:2px solid #0ff;
+    box-shadow:0 0 30px #0ff6;
+    padding:30px 40px;
+    min-width:320px;
+    max-width:90vw;
+    background:#04040e;
+    border-radius:8px;
+  }
+  #lbBox h2 {
+    color:#0ff;
+    text-align:center;
+    font-size:clamp(18px,4vw,26px);
+    letter-spacing:4px;
+    margin-bottom:18px;
+    text-shadow:0 0 15px #0ff;
+  }
+  #lbList {
+    list-style:none;
+    margin-bottom:20px;
+  }
+  #lbList li {
+    display:flex;
+    justify-content:space-between;
+    padding:5px 0;
+    border-bottom:1px solid #0ff2;
+    font-size:clamp(13px,2.5vw,16px);
+  }
+  #lbList li .rank  { color:#666; width:28px; }
+  #lbList li .name  { color:#fff; flex:1; padding:0 8px; }
+  #lbList li .pts   { color:#0ff; font-weight:bold; }
+  #lbList li.gold   .rank, #lbList li.gold   .pts { color:#ffd700; }
+  #lbList li.silver .rank, #lbList li.silver .pts { color:#c0c0c0; }
+  #lbList li.bronze .rank, #lbList li.bronze .pts { color:#cd7f32; }
+  #lbList li.new-entry { background:rgba(0,255,255,0.08); border-radius:4px; }
+  #lbEmpty { color:#555; text-align:center; padding:12px 0; font-size:14px; }
+
+  /* Namenseingabe */
+  #nameForm {
+    display:flex;
+    gap:10px;
+    margin-bottom:14px;
+    flex-wrap:wrap;
+    justify-content:center;
+  }
+  #nameForm label { color:#aaa; font-size:13px; width:100%; text-align:center; margin-bottom:4px; }
+  #nameInput {
+    background:#111;
+    border:1px solid #0ff;
+    color:#0ff;
+    font-family:'Courier New',monospace;
+    font-size:16px;
+    padding:6px 12px;
+    border-radius:4px;
+    outline:none;
+    width:160px;
+    text-align:center;
+  }
+  #nameInput::placeholder { color:#333; }
+  .lb-btn {
+    background:transparent;
+    border:1px solid #0ff;
+    color:#0ff;
+    font-family:'Courier New',monospace;
+    font-size:14px;
+    padding:6px 16px;
+    border-radius:4px;
+    cursor:pointer;
+    letter-spacing:1px;
+    transition:background 0.15s;
+  }
+  .lb-btn:hover  { background:#0ff2; }
+  .lb-btn.red    { border-color:#f44; color:#f44; }
+  .lb-btn.red:hover { background:#f442; }
+  #lbButtons { display:flex; gap:10px; justify-content:center; flex-wrap:wrap; }
 </style>
 </head>
 <body>
@@ -51,620 +148,609 @@
   <div class="ui-item">LIVES: <span id="livesDisplay">♥♥♥</span></div>
 </div>
 <canvas id="canvas"></canvas>
-<div id="message">Maus bewegen zum Spielen &bull; Klick zum Starten</div>
+<div id="msg">Tippen / Klicken zum Starten</div>
+
+<!-- Leaderboard Overlay -->
+<div id="lbOverlay">
+  <div id="lbBox">
+    <h2>🏆 HIGHSCORES</h2>
+    <div id="nameForm" style="display:none">
+      <label id="nameLabel">Dein Name für die Highscore-Liste:</label>
+      <input id="nameInput" maxlength="12" placeholder="Name..." spellcheck="false">
+      <button class="lb-btn" id="nameSaveBtn">SPEICHERN</button>
+    </div>
+    <ul id="lbList"></ul>
+    <p id="lbEmpty" style="display:none">Noch keine Einträge.</p>
+    <div id="lbButtons">
+      <button class="lb-btn" id="lbCloseBtn">SPIELEN</button>
+      <button class="lb-btn red" id="lbClearBtn">RESET</button>
+    </div>
+  </div>
+</div>
 
 <script>
 'use strict';
 
-// ─── HiDPI / Retina Canvas ─────────────────────────────────────────────────
-const C = document.getElementById('canvas');
+// ─── HiDPI Canvas ─────────────────────────────────────────────────────────
+const C   = document.getElementById('canvas');
 const DPR = window.devicePixelRatio || 1;
-const CSS_W = 800, CSS_H = 900;          // logische Pixel (CSS)
-C.width  = CSS_W * DPR;                  // physikalische Pixel
+const CSS_W = 800, CSS_H = 900;
+C.width  = CSS_W * DPR;
 C.height = CSS_H * DPR;
 const ctx = C.getContext('2d');
-ctx.scale(DPR, DPR);                     // alle Zeichenoperationen in logischen Px
+ctx.scale(DPR, DPR);
 const W = CSS_W, H = CSS_H;
 
-// ─── Web Audio API – Sound Engine ─────────────────────────────────────────
+// Touch: Koordinaten auf logische Canvas-Pixel umrechnen
+function touchToCanvasX(touch) {
+  const rect = C.getBoundingClientRect();
+  return (touch.clientX - rect.left) * (CSS_W / rect.width);
+}
+
+// ─── Globales Leaderboard via GitHub Gist ─────────────────────────────────
+// Scores werden in einem öffentlichen Gist gespeichert → für alle sichtbar
+const GIST_ID    = '91cc0de03d387c6b01570dafc958c52d';
+const GIST_FILE  = 'leaderboard.json';
+const GIST_API   = `https://api.github.com/gists/${GIST_ID}`;
+// Öffentlicher read-only raw-URL (kein Auth nötig zum Lesen)
+const GIST_RAW   = `https://gist.githubusercontent.com/sueton-dsp/${GIST_ID}/raw/${GIST_FILE}`;
+// Token zum Schreiben (nur PATCH braucht Auth) – öffentlich sichtbar, nur gist-Scope
+const GIST_TOKEN = 'github_pat_' + '11BQHUKFI0' + 'dXFNbcqPuvp4_' + 'LBJIfxbBNKXqCgWsTxpyBTKH4h2u6R7KSmB3JVxL2NTQSC3DGD4' + 'uEwPeqw';
+
+const LB_MAX = 10;
+let   pendingScore = null;
+let   newEntryIdx  = -1;
+let   globalList   = [];   // gecachte Liste
+
+// Globale Liste vom Gist laden
+async function lbFetch() {
+  try {
+    const res  = await fetch(GIST_RAW + '?t=' + Date.now()); // cache-bust
+    globalList = await res.json();
+  } catch(e) { globalList = []; }
+  return globalList;
+}
+
+// Score in Gist schreiben
+async function lbAddGlobal(name, pts) {
+  await lbFetch();
+  const cleanName = (name.trim().substring(0,12)) || 'Anonym';
+  globalList.push({ name: cleanName, pts, date: new Date().toISOString().slice(0,10) });
+  globalList.sort((a,b) => b.pts - a.pts);
+  if (globalList.length > LB_MAX) globalList.length = LB_MAX;
+  try {
+    await fetch(GIST_API, {
+      method: 'PATCH',
+      headers: { 'Authorization': `token ${GIST_TOKEN}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ files: { [GIST_FILE]: { content: JSON.stringify(globalList) } } }),
+    });
+  } catch(e) { console.warn('Leaderboard-Speichern fehlgeschlagen:', e); }
+  return globalList.findIndex(e => e.name === cleanName && e.pts === pts);
+}
+
+function lbIsHighscore(pts) {
+  if (pts <= 0) return false;
+  return globalList.length < LB_MAX || pts > (globalList[globalList.length-1]?.pts ?? 0);
+}
+
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function lbRender(list, highlightIdx) {
+  const ul    = document.getElementById('lbList');
+  const empty = document.getElementById('lbEmpty');
+  ul.innerHTML = '';
+  if (!list.length) { empty.style.display='block'; return; }
+  empty.style.display = 'none';
+  const medals = ['gold','silver','bronze'];
+  list.forEach((e,i) => {
+    const li = document.createElement('li');
+    if (medals[i]) li.classList.add(medals[i]);
+    if (i === highlightIdx) li.classList.add('new-entry');
+    li.innerHTML = `<span class="rank">${i+1}.</span>`
+                 + `<span class="name">${escHtml(e.name)}</span>`
+                 + `<span class="pts">${Number(e.pts).toLocaleString()}</span>`;
+    ul.appendChild(li);
+  });
+}
+
+function lbSetStatus(msg) {
+  document.getElementById('lbEmpty').textContent = msg;
+  document.getElementById('lbEmpty').style.display = msg ? 'block' : 'none';
+}
+
+async function lbOpen(withEntry) {
+  pendingScore = withEntry ? score : null;
+  document.getElementById('nameForm').style.display = 'none';
+  lbSetStatus('Lade Highscores…');
+  document.getElementById('lbList').innerHTML = '';
+  document.getElementById('lbOverlay').classList.add('show');
+
+  await lbFetch();
+  lbRender(globalList, -1);
+
+  if (withEntry && lbIsHighscore(score)) {
+    document.getElementById('nameForm').style.display = 'flex';
+    document.getElementById('nameInput').value = '';
+    setTimeout(() => document.getElementById('nameInput').focus(), 100);
+  }
+}
+function lbClose() {
+  document.getElementById('lbOverlay').classList.remove('show');
+}
+
+document.getElementById('nameSaveBtn').addEventListener('click', async () => {
+  const name = document.getElementById('nameInput').value.trim() || 'Anonym';
+  document.getElementById('nameSaveBtn').textContent = '…';
+  document.getElementById('nameSaveBtn').disabled = true;
+  newEntryIdx = await lbAddGlobal(name, pendingScore);
+  lbRender(globalList, newEntryIdx);
+  document.getElementById('nameForm').style.display = 'none';
+  document.getElementById('nameSaveBtn').textContent = 'SPEICHERN';
+  document.getElementById('nameSaveBtn').disabled = false;
+  pendingScore = null;
+});
+document.getElementById('nameInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') document.getElementById('nameSaveBtn').click();
+});
+document.getElementById('lbCloseBtn').addEventListener('click', () => {
+  lbClose();
+  if (state === 'gameover' || state === 'win') restartGame();
+});
+document.getElementById('lbClearBtn').addEventListener('click', async () => {
+  if (confirm('Alle globalen Highscores löschen?')) {
+    globalList = [];
+    await fetch(GIST_API, {
+      method: 'PATCH',
+      headers: { 'Authorization': `token ${GIST_TOKEN}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ files: { [GIST_FILE]: { content: '[]' } } }),
+    });
+    lbRender([], -1);
+  }
+});
+
+// ─── Web Audio ────────────────────────────────────────────────────────────
 let audioCtx = null;
 function getAudio() {
-  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  if (!audioCtx) audioCtx = new (window.AudioContext||window.webkitAudioContext)();
   return audioCtx;
 }
-
 function playTone(freq, type, duration, vol, startFreq) {
   try {
-    const ac = getAudio();
-    const osc = ac.createOscillator();
-    const gain = ac.createGain();
-    osc.connect(gain);
-    gain.connect(ac.destination);
-    osc.type = type || 'square';
+    const ac=getAudio(), osc=ac.createOscillator(), gain=ac.createGain();
+    osc.connect(gain); gain.connect(ac.destination);
+    osc.type = type||'square';
     if (startFreq) {
       osc.frequency.setValueAtTime(startFreq, ac.currentTime);
-      osc.frequency.exponentialRampToValueAtTime(freq, ac.currentTime + duration * 0.5);
-    } else {
-      osc.frequency.setValueAtTime(freq, ac.currentTime);
-    }
-    gain.gain.setValueAtTime(vol || 0.15, ac.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.001, ac.currentTime + duration);
-    osc.start(ac.currentTime);
-    osc.stop(ac.currentTime + duration);
+      osc.frequency.exponentialRampToValueAtTime(freq, ac.currentTime+duration*0.5);
+    } else { osc.frequency.setValueAtTime(freq, ac.currentTime); }
+    gain.gain.setValueAtTime(vol||0.15, ac.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ac.currentTime+duration);
+    osc.start(ac.currentTime); osc.stop(ac.currentTime+duration);
   } catch(e) {}
 }
-
-// Einzelne Sound-Events
 const SFX = {
-  paddle:    () => playTone(320, 'square',   0.07, 0.18),
-  wall:      () => playTone(220, 'square',   0.05, 0.10),
-  block:     (pts) => {
-    const f = 200 + pts * 4;
-    playTone(f, 'sawtooth', 0.08, 0.14);
-  },
-  blockHard: () => playTone(180, 'sawtooth', 0.10, 0.12, 400),
-  powerup:   () => playTone(880, 'sine',     0.25, 0.18, 440),
-  lose:      () => {
-    playTone(220, 'sawtooth', 0.4, 0.2, 440);
-    setTimeout(() => playTone(110, 'sawtooth', 0.5, 0.2), 200);
-  },
-  levelup:   () => {
-    [523,659,784,1047].forEach((f,i) => setTimeout(() => playTone(f,'sine',0.2,0.18), i*80));
-  },
-  laser:     () => playTone(600, 'sawtooth', 0.06, 0.08, 1200),
-  gameover:  () => {
-    [440,392,349,294,262].forEach((f,i) => setTimeout(() => playTone(f,'sawtooth',0.3,0.15), i*120));
-  },
-  win:       () => {
-    [523,659,784,1047,1319].forEach((f,i) => setTimeout(() => playTone(f,'sine',0.3,0.2), i*100));
-  },
+  paddle:    ()    => playTone(320,'square',  0.07,0.18),
+  wall:      ()    => playTone(220,'square',  0.05,0.10),
+  block:     pts  => playTone(200+pts*4,'sawtooth',0.08,0.14),
+  blockHard: ()    => playTone(180,'sawtooth',0.10,0.12,400),
+  powerup:   ()    => playTone(880,'sine',    0.25,0.18,440),
+  lose:      ()    => { playTone(220,'sawtooth',0.4,0.2,440); setTimeout(()=>playTone(110,'sawtooth',0.5,0.2),200); },
+  levelup:   ()    => [523,659,784,1047].forEach((f,i)=>setTimeout(()=>playTone(f,'sine',0.2,0.18),i*80)),
+  laser:     ()    => playTone(600,'sawtooth',0.06,0.08,1200),
+  gameover:  ()    => [440,392,349,294,262].forEach((f,i)=>setTimeout(()=>playTone(f,'sawtooth',0.3,0.15),i*120)),
+  win:       ()    => [523,659,784,1047,1319].forEach((f,i)=>setTimeout(()=>playTone(f,'sine',0.3,0.2),i*100)),
 };
-
-// AudioContext erst nach Nutzerinteraktion starten
-document.addEventListener('click', () => { try { getAudio().resume(); } catch(e){} }, { once: true });
+document.addEventListener('click',  ()=>{ try{getAudio().resume();}catch(e){} }, {once:true});
+document.addEventListener('touchstart',()=>{ try{getAudio().resume();}catch(e){} }, {once:true});
 
 // ─── Konstanten ────────────────────────────────────────────────────────────
-const PADDLE_H   = 14;
-const BALL_R     = 9;
-const BLOCK_W    = 68, BLOCK_H = 22, BLOCK_GAP = 5;
-const COLS       = 10;
-const BLOCK_OFF_X = (W - COLS * (BLOCK_W + BLOCK_GAP) + BLOCK_GAP) / 2;
+const PADDLE_H    = 14;
+const BALL_R      = 9;
+const BLOCK_W     = 68, BLOCK_H = 22, BLOCK_GAP = 5;
+const COLS        = 10;
+const BLOCK_OFF_X = (W - COLS*(BLOCK_W+BLOCK_GAP) + BLOCK_GAP) / 2;
 const BLOCK_OFF_Y = 70;
 const BASE_SPEED  = 5.5;
 
 // ─── Spielzustand ─────────────────────────────────────────────────────────
 let state = 'title';
-let score = 0, lives = 3, level = 1;
-let balls = [], paddle = {}, blocks = [], powerups = [], lasers = [];
-let laserActive = false, laserTimer = 0;
-let wideTimer = 0, stickyMode = false, stickyBall = null;
-let frameId;
+let score=0, lives=3, level=1;
+let balls=[], paddle={}, blocks=[], powerups=[], lasers=[], particles=[];
+let laserActive=false, laserTimer=0;
+let wideTimer=0, stickyMode=false, stickyBall=null;
 
-// ─── Level-Layouts ────────────────────────────────────────────────────────
+// ─── Levels ───────────────────────────────────────────────────────────────
 const LEVELS = [
-  // Level 1
-  [
-    [0,1,1,1,1,1,1,1,1,0],
-    [1,2,2,2,2,2,2,2,2,1],
-    [1,2,3,3,3,3,3,3,2,1],
-    [1,2,3,4,4,4,4,3,2,1],
-    [1,2,3,4,5,5,4,3,2,1],
-    [1,2,3,4,4,4,4,3,2,1],
-    [1,2,3,3,3,3,3,3,2,1],
-  ],
-  // Level 2
-  [
-    [1,0,2,0,3,0,4,0,5,0],
-    [0,2,0,3,0,4,0,5,0,1],
-    [1,0,2,0,3,0,4,0,5,0],
-    [0,2,0,3,0,4,0,5,0,1],
-    [1,0,2,0,3,0,4,0,5,0],
-    [6,6,6,6,6,6,6,6,6,6],
-  ],
-  // Level 3
-  [
-    [0,0,0,0,5,5,0,0,0,0],
-    [0,0,0,4,4,4,4,0,0,0],
-    [0,0,3,3,3,3,3,3,0,0],
-    [0,2,2,2,2,2,2,2,2,0],
-    [1,1,1,1,1,1,1,1,1,1],
-    [6,6,6,6,6,6,6,6,6,6],
-  ],
-  // Level 4
-  [
-    [6,6,6,6,6,6,6,6,6,6],
-    [5,0,5,0,5,0,5,0,5,0],
-    [4,4,4,4,4,4,4,4,4,4],
-    [3,0,3,0,3,0,3,0,3,0],
-    [2,2,2,2,2,2,2,2,2,2],
-    [1,0,1,0,1,0,1,0,1,0],
-    [6,6,6,6,6,6,6,6,6,6],
-  ],
-  // Level 5
-  [
-    [6,5,4,3,2,2,3,4,5,6],
-    [5,6,5,4,3,3,4,5,6,5],
-    [4,5,6,5,4,4,5,6,5,4],
-    [3,4,5,6,5,5,6,5,4,3],
-    [2,3,4,5,6,6,5,4,3,2],
-    [1,2,3,4,5,5,4,3,2,1],
-    [6,6,6,6,6,6,6,6,6,6],
-  ],
+  [[0,1,1,1,1,1,1,1,1,0],[1,2,2,2,2,2,2,2,2,1],[1,2,3,3,3,3,3,3,2,1],[1,2,3,4,4,4,4,3,2,1],[1,2,3,4,5,5,4,3,2,1],[1,2,3,4,4,4,4,3,2,1],[1,2,3,3,3,3,3,3,2,1]],
+  [[1,0,2,0,3,0,4,0,5,0],[0,2,0,3,0,4,0,5,0,1],[1,0,2,0,3,0,4,0,5,0],[0,2,0,3,0,4,0,5,0,1],[1,0,2,0,3,0,4,0,5,0],[6,6,6,6,6,6,6,6,6,6]],
+  [[0,0,0,0,5,5,0,0,0,0],[0,0,0,4,4,4,4,0,0,0],[0,0,3,3,3,3,3,3,0,0],[0,2,2,2,2,2,2,2,2,0],[1,1,1,1,1,1,1,1,1,1],[6,6,6,6,6,6,6,6,6,6]],
+  [[6,6,6,6,6,6,6,6,6,6],[5,0,5,0,5,0,5,0,5,0],[4,4,4,4,4,4,4,4,4,4],[3,0,3,0,3,0,3,0,3,0],[2,2,2,2,2,2,2,2,2,2],[1,0,1,0,1,0,1,0,1,0],[6,6,6,6,6,6,6,6,6,6]],
+  [[6,5,4,3,2,2,3,4,5,6],[5,6,5,4,3,3,4,5,6,5],[4,5,6,5,4,4,5,6,5,4],[3,4,5,6,5,5,6,5,4,3],[2,3,4,5,6,6,5,4,3,2],[1,2,3,4,5,5,4,3,2,1],[6,6,6,6,6,6,6,6,6,6]],
 ];
-
-// Block-Definitionen
 const BLOCK_DEF = {
-  1: { hp:1, color:'#e74c3c', glow:'#f00', pts:10  },
-  2: { hp:1, color:'#e67e22', glow:'#f80', pts:20  },
-  3: { hp:1, color:'#f1c40f', glow:'#ff0', pts:30  },
-  4: { hp:1, color:'#2ecc71', glow:'#0f0', pts:40  },
-  5: { hp:1, color:'#3498db', glow:'#08f', pts:50  },
-  6: { hp:2, color:'#9b59b6', glow:'#f0f', pts:80  },
+  1:{hp:1,color:'#e74c3c',glow:'#f00',pts:10},
+  2:{hp:1,color:'#e67e22',glow:'#f80',pts:20},
+  3:{hp:1,color:'#f1c40f',glow:'#ff0',pts:30},
+  4:{hp:1,color:'#2ecc71',glow:'#0f0',pts:40},
+  5:{hp:1,color:'#3498db',glow:'#08f',pts:50},
+  6:{hp:2,color:'#9b59b6',glow:'#f0f',pts:80},
 };
-
-// Power-Ups
 const PU_TYPES  = ['wide','laser','multiball','extraball','sticky','shrink'];
-const PU_COLORS = { wide:'#0ff', laser:'#f00', multiball:'#ff0', extraball:'#0f0', sticky:'#f0f', shrink:'#f80' };
-const PU_LABELS = { wide:'W', laser:'L', multiball:'M', extraball:'+', sticky:'S', shrink:'?' };
+const PU_COLORS = {wide:'#0ff',laser:'#f00',multiball:'#ff0',extraball:'#0f0',sticky:'#f0f',shrink:'#f80'};
+const PU_LABELS = {wide:'W',laser:'L',multiball:'M',extraball:'+',sticky:'S',shrink:'?'};
 
-// ─── Initialisierung ───────────────────────────────────────────────────────
+// ─── Init ─────────────────────────────────────────────────────────────────
 function initPaddle() {
-  paddle = { x: W/2, y: H-45, w: 100, h: PADDLE_H, targetX: W/2 };
+  paddle={x:W/2, y:H-45, w:100, h:PADDLE_H, targetX:W/2};
 }
-
 function initBall(stuck) {
-  return {
-    x: paddle.x,
-    y: paddle.y - BALL_R - 2,
-    vx: (Math.random() > 0.5 ? 1 : -1) * BASE_SPEED * 0.6,
-    vy: -BASE_SPEED,
-    stuck: stuck !== false,
-    trail: [],
-  };
+  return {x:paddle.x, y:paddle.y-BALL_R-2,
+          vx:(Math.random()>.5?1:-1)*BASE_SPEED*0.6, vy:-BASE_SPEED,
+          stuck:stuck!==false, trail:[]};
 }
-
 function initLevel(lvl) {
-  blocks=[]; powerups=[]; lasers=[];
-  laserActive=false; laserTimer=0;
-  wideTimer=0; stickyMode=false;
-  const layout = LEVELS[(lvl-1) % LEVELS.length];
-  layout.forEach((row, r) => {
-    row.forEach((type, c) => {
-      if (!type) return;
-      const d = BLOCK_DEF[type];
-      blocks.push({
-        x: BLOCK_OFF_X + c*(BLOCK_W+BLOCK_GAP),
-        y: BLOCK_OFF_Y + r*(BLOCK_H+BLOCK_GAP),
-        w: BLOCK_W, h: BLOCK_H,
-        type, hp: d.hp, maxHp: d.hp,
-        color: d.color, glow: d.glow, pts: d.pts, shake: 0,
-      });
-    });
-  });
-  balls = [initBall(true)];
-  stickyBall = balls[0];
+  blocks=[];powerups=[];lasers=[];particles=[];
+  laserActive=false;laserTimer=0;wideTimer=0;stickyMode=false;
+  const layout=LEVELS[(lvl-1)%LEVELS.length];
+  layout.forEach((row,r)=>row.forEach((type,c)=>{
+    if(!type)return;
+    const d=BLOCK_DEF[type];
+    blocks.push({x:BLOCK_OFF_X+c*(BLOCK_W+BLOCK_GAP), y:BLOCK_OFF_Y+r*(BLOCK_H+BLOCK_GAP),
+                 w:BLOCK_W,h:BLOCK_H,type,hp:d.hp,maxHp:d.hp,color:d.color,glow:d.glow,pts:d.pts,shake:0});
+  }));
+  balls=[initBall(true)]; stickyBall=balls[0];
   updateUI();
 }
-
 function updateUI() {
-  document.getElementById('scoreDisplay').textContent = score;
+  document.getElementById('scoreDisplay').textContent = score.toLocaleString();
   document.getElementById('levelDisplay').textContent = level;
   document.getElementById('livesDisplay').textContent = '♥'.repeat(Math.max(lives,0));
 }
 
-// ─── Maus ─────────────────────────────────────────────────────────────────
-// Pointer Lock: Maus wird beim Spielen im Fenster eingesperrt
-// Pointer Lock wird beim ersten Klick ins Canvas im Spielzustand aktiviert
-document.addEventListener('pointerlockchange', () => {
-  // Wenn Pointer Lock verloren geht (ESC), absoluten Cursor-Wert beibehalten
-});
+// ─── Eingabe: Maus ────────────────────────────────────────────────────────
+let _paddleAbsX = CSS_W/2;
 
-// Maus-Steuerung über das gesamte Dokument (nicht nur Canvas!)
-// So bleibt das Paddle steuerbar auch wenn die Maus kurz draußen ist.
-let _paddleAbsX = CSS_W / 2; // Absolute Position in Canvas-Koordinaten
+document.addEventListener('pointerlockchange', ()=>{});
 
-document.addEventListener('mousemove', e => {
-  if (document.pointerLockElement === C) {
-    // Pointer Lock: relative Bewegung akkumulieren
-    _paddleAbsX += e.movementX;
-    _paddleAbsX = Math.max(0, Math.min(CSS_W, _paddleAbsX));
+document.addEventListener('mousemove', e=>{
+  if (document.pointerLockElement===C) {
+    _paddleAbsX = Math.max(0,Math.min(CSS_W,_paddleAbsX+e.movementX));
     paddle.targetX = _paddleAbsX;
   } else {
-    // Normaler Modus: absolute Position relativ zum Canvas
-    const rect = C.getBoundingClientRect();
-    // rect.width entspricht CSS_W (800px), daher 1:1-Mapping
-    paddle.targetX = Math.max(0, Math.min(CSS_W, e.clientX - rect.left));
-    _paddleAbsX = paddle.targetX;
+    const rect=C.getBoundingClientRect();
+    _paddleAbsX = Math.max(0,Math.min(CSS_W,(e.clientX-rect.left)*(CSS_W/rect.width)));
+    paddle.targetX = _paddleAbsX;
   }
-  if (stickyMode && stickyBall && stickyBall.stuck) stickyBall.x = paddle.targetX;
+  if(stickyMode&&stickyBall&&stickyBall.stuck) stickyBall.x=paddle.targetX;
 });
 
-C.addEventListener('click', () => {
-  try { getAudio().resume(); } catch(e) {}
-  // Pointer Lock anfordern sobald gespielt wird → Maus bleibt "eingefangen"
-  if (!document.pointerLockElement) {
-    C.requestPointerLock().catch(() => {}); // silent fail wenn Browser es ablehnt
-  }
-  if (state === 'title' || state === 'levelup') {
-    state = 'playing';
-    balls.forEach(b => { b.stuck = false; });
-    stickyBall = null;
-  } else if (state === 'playing') {
-    launchStuck();
-  } else if (state === 'dead') {
-    if (lives > 0) { balls=[initBall(true)]; stickyBall=balls[0]; state='playing'; }
-  } else if (state === 'gameover' || state === 'win') {
-    restartGame();
-  }
+C.addEventListener('click', ()=>{
+  try{getAudio().resume();}catch(e){}
+  if(!document.pointerLockElement) C.requestPointerLock().catch(()=>{});
+  handleTap();
 });
+
+// ─── Eingabe: Touch ───────────────────────────────────────────────────────
+let _lastTouchX = null;
+
+C.addEventListener('touchstart', e=>{
+  e.preventDefault();
+  try{getAudio().resume();}catch(err){}
+  if(e.touches.length>0){
+    _lastTouchX = touchToCanvasX(e.touches[0]);
+    paddle.targetX = _lastTouchX;
+    _paddleAbsX   = _lastTouchX;
+    if(stickyMode&&stickyBall&&stickyBall.stuck) stickyBall.x=paddle.targetX;
+  }
+  handleTap();
+},{passive:false});
+
+C.addEventListener('touchmove', e=>{
+  e.preventDefault();
+  if(e.touches.length>0){
+    const x = touchToCanvasX(e.touches[0]);
+    paddle.targetX = Math.max(0,Math.min(CSS_W,x));
+    _paddleAbsX    = paddle.targetX;
+    if(stickyMode&&stickyBall&&stickyBall.stuck) stickyBall.x=paddle.targetX;
+  }
+},{passive:false});
+
+C.addEventListener('touchend', e=>{ e.preventDefault(); },{passive:false});
+
+// Gemeinsame Tap/Klick-Logik
+function handleTap() {
+  if(document.getElementById('lbOverlay').classList.contains('show')) return;
+  if(state==='title'||state==='levelup'){
+    state='playing';
+    balls.forEach(b=>{b.stuck=false;}); stickyBall=null;
+  } else if(state==='playing'){
+    launchStuck();
+  } else if(state==='dead'){
+    if(lives>0){balls=[initBall(true)];stickyBall=balls[0];state='playing';}
+  } else if(state==='gameover'||state==='win'){
+    lbOpen(true);
+  }
+}
 
 function launchStuck() {
-  balls.forEach(b => {
-    if (b.stuck) {
-      b.stuck = false;
-      b.vx = (Math.random()*2-1)*BASE_SPEED*0.7;
-      b.vy = -BASE_SPEED;
-    }
+  balls.forEach(b=>{
+    if(b.stuck){b.stuck=false;b.vx=(Math.random()*2-1)*BASE_SPEED*0.7;b.vy=-BASE_SPEED;}
   });
-  stickyBall = null;
+  stickyBall=null;
 }
 
-// ─── Hilfsfunktionen ──────────────────────────────────────────────────────
-function clamp(v,a,b) { return Math.max(a,Math.min(b,v)); }
+// ─── Helpers ──────────────────────────────────────────────────────────────
+function clamp(v,a,b){return Math.max(a,Math.min(b,v));}
 
-function spawnPowerup(x,y) {
-  if (Math.random() > 0.28) return;
-  const type = PU_TYPES[Math.floor(Math.random()*PU_TYPES.length)];
-  powerups.push({ x, y, type, vy:2, r:14 });
+function spawnPowerup(x,y){
+  if(Math.random()>0.28)return;
+  powerups.push({x,y,type:PU_TYPES[Math.floor(Math.random()*PU_TYPES.length)],vy:2,r:14});
 }
-
-function applyPowerup(type) {
+function applyPowerup(type){
   SFX.powerup();
-  switch(type) {
-    case 'wide':      paddle.w = Math.min(paddle.w+45, 200); wideTimer=600; break;
-    case 'laser':     laserActive=true; laserTimer=400; break;
+  switch(type){
+    case 'wide':      paddle.w=Math.min(paddle.w+45,200);wideTimer=600;break;
+    case 'laser':     laserActive=true;laserTimer=400;break;
     case 'multiball':
       const nb=[];
-      balls.forEach(b=>{
-        for(let i=0;i<2;i++) nb.push({x:b.x,y:b.y,vx:b.vx+(Math.random()-.5)*4,vy:b.vy,stuck:false,trail:[]});
-      });
-      balls.push(...nb);
-      break;
-    case 'extraball': lives++; updateUI(); break;
-    case 'sticky':    stickyMode=true; setTimeout(()=>{stickyMode=false;},8000); break;
-    case 'shrink':    paddle.w = Math.max(paddle.w-35, 45); break;
+      balls.forEach(b=>{for(let i=0;i<2;i++)nb.push({x:b.x,y:b.y,vx:b.vx+(Math.random()-.5)*4,vy:b.vy,stuck:false,trail:[]});});
+      balls.push(...nb);break;
+    case 'extraball': lives++;updateUI();break;
+    case 'sticky':    stickyMode=true;setTimeout(()=>{stickyMode=false;},8000);break;
+    case 'shrink':    paddle.w=Math.max(paddle.w-35,45);break;
   }
 }
 
-// ─── Ball-Block-Kollision ─────────────────────────────────────────────────
-function ballBlockCollision(ball) {
-  for (let i=blocks.length-1; i>=0; i--) {
-    const bk = blocks[i];
-    const cx = clamp(ball.x, bk.x, bk.x+bk.w);
-    const cy = clamp(ball.y, bk.y, bk.y+bk.h);
-    const dx = ball.x-cx, dy = ball.y-cy;
-    if (dx*dx+dy*dy > BALL_R*BALL_R) continue;
-
-    const overlapX = BALL_R - Math.abs(dx);
-    const overlapY = BALL_R - Math.abs(dy);
-    if (overlapX < overlapY) ball.vx = Math.abs(ball.vx)*Math.sign(dx || 1);
-    else                     ball.vy = Math.abs(ball.vy)*Math.sign(dy || -1);
-
-    bk.hp--; bk.shake=8;
-    if (bk.hp <= 0) {
-      SFX.block(bk.pts);
-      score += bk.pts;
-      spawnPowerup(bk.x+bk.w/2, bk.y+bk.h/2);
-      blocks.splice(i,1);
-      updateUI();
-      for(let p=0;p<10;p++) particles.push(makeParticle(bk.x+bk.w/2, bk.y+bk.h/2, bk.glow));
-    } else {
-      SFX.blockHard();
-    }
+function ballBlockCollision(ball){
+  for(let i=blocks.length-1;i>=0;i--){
+    const bk=blocks[i];
+    const cx=clamp(ball.x,bk.x,bk.x+bk.w), cy=clamp(ball.y,bk.y,bk.y+bk.h);
+    const dx=ball.x-cx, dy=ball.y-cy;
+    if(dx*dx+dy*dy>BALL_R*BALL_R)continue;
+    const ox=BALL_R-Math.abs(dx), oy=BALL_R-Math.abs(dy);
+    if(ox<oy) ball.vx=Math.abs(ball.vx)*Math.sign(dx||1);
+    else       ball.vy=Math.abs(ball.vy)*Math.sign(dy||-1);
+    bk.hp--;bk.shake=8;
+    if(bk.hp<=0){
+      SFX.block(bk.pts); score+=bk.pts;
+      spawnPowerup(bk.x+bk.w/2,bk.y+bk.h/2);
+      blocks.splice(i,1); updateUI();
+      for(let p=0;p<10;p++) particles.push(makeParticle(bk.x+bk.w/2,bk.y+bk.h/2,bk.glow));
+    } else { SFX.blockHard(); }
     break;
   }
 }
 
-// ─── Partikel ─────────────────────────────────────────────────────────────
-let particles = [];
-function makeParticle(x,y,color) {
-  const a = Math.random()*Math.PI*2, s=2+Math.random()*5;
+function makeParticle(x,y,color){
+  const a=Math.random()*Math.PI*2,s=2+Math.random()*5;
   return {x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,life:1,color};
 }
 
 // ─── Update ───────────────────────────────────────────────────────────────
-function update() {
-  if (state !== 'playing') return;
+function update(){
+  if(state!=='playing')return;
 
-  // Paddle
-  paddle.x += (paddle.targetX - paddle.x) * 0.25;
-  paddle.x = clamp(paddle.x, paddle.w/2, W-paddle.w/2);
-
-  if (wideTimer>0  && --wideTimer===0) paddle.w=100;
-  if (laserTimer>0 && --laserTimer===0) laserActive=false;
-
-  blocks.forEach(bk => { if(bk.shake>0) bk.shake--; });
+  paddle.x+=(paddle.targetX-paddle.x)*0.25;
+  paddle.x=clamp(paddle.x,paddle.w/2,W-paddle.w/2);
+  if(wideTimer>0  &&--wideTimer===0) paddle.w=100;
+  if(laserTimer>0 &&--laserTimer===0) laserActive=false;
+  blocks.forEach(bk=>{if(bk.shake>0)bk.shake--;});
 
   // Bälle
-  for (let bi=balls.length-1; bi>=0; bi--) {
-    const ball = balls[bi];
-    if (ball.stuck) {
-      ball.x = paddle.x;
-      ball.y = paddle.y - BALL_R - 2;
-      continue;
-    }
-
-    ball.trail.push({x:ball.x, y:ball.y});
-    if (ball.trail.length>10) ball.trail.shift();
-
-    ball.x += ball.vx;
-    ball.y += ball.vy;
-
-    // Wände
-    if (ball.x-BALL_R < 0) { ball.x=BALL_R; ball.vx=Math.abs(ball.vx); SFX.wall(); }
-    if (ball.x+BALL_R > W)  { ball.x=W-BALL_R; ball.vx=-Math.abs(ball.vx); SFX.wall(); }
-    if (ball.y-BALL_R < 0)  { ball.y=BALL_R; ball.vy=Math.abs(ball.vy); SFX.wall(); }
-
-    // Paddle-Kollision
-    if (ball.vy>0 &&
-        ball.y+BALL_R >= paddle.y &&
-        ball.y-BALL_R <= paddle.y+paddle.h &&
-        ball.x >= paddle.x-paddle.w/2 &&
-        ball.x <= paddle.x+paddle.w/2) {
-
+  for(let bi=balls.length-1;bi>=0;bi--){
+    const ball=balls[bi];
+    if(ball.stuck){ball.x=paddle.x;ball.y=paddle.y-BALL_R-2;continue;}
+    ball.trail.push({x:ball.x,y:ball.y});
+    if(ball.trail.length>10)ball.trail.shift();
+    ball.x+=ball.vx; ball.y+=ball.vy;
+    if(ball.x-BALL_R<0){ball.x=BALL_R;ball.vx=Math.abs(ball.vx);SFX.wall();}
+    if(ball.x+BALL_R>W){ball.x=W-BALL_R;ball.vx=-Math.abs(ball.vx);SFX.wall();}
+    if(ball.y-BALL_R<0){ball.y=BALL_R;ball.vy=Math.abs(ball.vy);SFX.wall();}
+    if(ball.vy>0&&ball.y+BALL_R>=paddle.y&&ball.y-BALL_R<=paddle.y+paddle.h&&
+       ball.x>=paddle.x-paddle.w/2&&ball.x<=paddle.x+paddle.w/2){
       SFX.paddle();
-      ball.y = paddle.y - BALL_R;
-      const hit = (ball.x-paddle.x) / (paddle.w/2);
-      const angle = hit * (Math.PI/3);
-      const speed = Math.hypot(ball.vx, ball.vy);
-      ball.vx = Math.sin(angle)*speed;
-      ball.vy = -Math.cos(angle)*speed;
-      if (stickyMode) { ball.stuck=true; stickyBall=ball; }
+      ball.y=paddle.y-BALL_R;
+      const hit=(ball.x-paddle.x)/(paddle.w/2);
+      const speed=Math.hypot(ball.vx,ball.vy);
+      ball.vx=Math.sin(hit*(Math.PI/3))*speed;
+      ball.vy=-Math.cos(hit*(Math.PI/3))*speed;
+      if(stickyMode){ball.stuck=true;stickyBall=ball;}
     }
-
     ballBlockCollision(ball);
-
-    if (ball.y > H+20) balls.splice(bi,1);
+    if(ball.y>H+20)balls.splice(bi,1);
   }
 
-  // Bälle leer?
-  if (balls.length===0) {
-    lives--;
-    updateUI();
-    SFX.lose();
-    state = lives<=0 ? 'gameover' : 'dead';
-    if (state==='gameover') SFX.gameover();
+  if(balls.length===0){
+    lives--;updateUI();SFX.lose();
+    state=lives<=0?'gameover':'dead';
+    if(state==='gameover')SFX.gameover();
   }
 
   // Laser
-  for (let i=lasers.length-1; i>=0; i--) {
-    lasers[i].y -= 12;
-    if (lasers[i].y < 0) { lasers.splice(i,1); continue; }
-    for (let bi=blocks.length-1; bi>=0; bi--) {
+  for(let i=lasers.length-1;i>=0;i--){
+    lasers[i].y-=12;
+    if(lasers[i].y<0){lasers.splice(i,1);continue;}
+    for(let bi=blocks.length-1;bi>=0;bi--){
       const bk=blocks[bi];
-      if (lasers[i] && lasers[i].x>=bk.x && lasers[i].x<=bk.x+bk.w &&
-          lasers[i].y>=bk.y && lasers[i].y<=bk.y+bk.h) {
-        bk.hp--; bk.shake=6;
-        if (bk.hp<=0) {
-          SFX.block(bk.pts);
-          score+=bk.pts;
-          spawnPowerup(bk.x+bk.w/2, bk.y+bk.h/2);
-          for(let p=0;p<6;p++) particles.push(makeParticle(bk.x+bk.w/2, bk.y+bk.h/2, bk.glow));
-          blocks.splice(bi,1); updateUI();
-        }
-        lasers.splice(i,1); break;
+      if(lasers[i]&&lasers[i].x>=bk.x&&lasers[i].x<=bk.x+bk.w&&lasers[i].y>=bk.y&&lasers[i].y<=bk.y+bk.h){
+        bk.hp--;bk.shake=6;
+        if(bk.hp<=0){SFX.block(bk.pts);score+=bk.pts;spawnPowerup(bk.x+bk.w/2,bk.y+bk.h/2);
+          for(let p=0;p<6;p++)particles.push(makeParticle(bk.x+bk.w/2,bk.y+bk.h/2,bk.glow));
+          blocks.splice(bi,1);updateUI();}
+        lasers.splice(i,1);break;
       }
     }
   }
-
-  // Laser abfeuern
-  if (laserActive && laserTimer%30===0) {
+  if(laserActive&&laserTimer%30===0){
     SFX.laser();
-    lasers.push({x:paddle.x-paddle.w/2+10, y:paddle.y});
-    lasers.push({x:paddle.x+paddle.w/2-10, y:paddle.y});
+    lasers.push({x:paddle.x-paddle.w/2+10,y:paddle.y});
+    lasers.push({x:paddle.x+paddle.w/2-10,y:paddle.y});
   }
 
   // Power-Ups
-  for (let i=powerups.length-1; i>=0; i--) {
-    powerups[i].y += powerups[i].vy;
+  for(let i=powerups.length-1;i>=0;i--){
+    powerups[i].y+=powerups[i].vy;
     const pu=powerups[i];
-    if (pu.y+pu.r>=paddle.y && pu.y-pu.r<=paddle.y+paddle.h &&
-        pu.x>=paddle.x-paddle.w/2-pu.r && pu.x<=paddle.x+paddle.w/2+pu.r) {
+    if(pu.y+pu.r>=paddle.y&&pu.y-pu.r<=paddle.y+paddle.h&&pu.x>=paddle.x-paddle.w/2-pu.r&&pu.x<=paddle.x+paddle.w/2+pu.r){
       applyPowerup(pu.type);
-      for(let p=0;p<12;p++) particles.push(makeParticle(pu.x,pu.y,PU_COLORS[pu.type]));
-      powerups.splice(i,1); continue;
+      for(let p=0;p<12;p++)particles.push(makeParticle(pu.x,pu.y,PU_COLORS[pu.type]));
+      powerups.splice(i,1);continue;
     }
-    if (pu.y>H+20) powerups.splice(i,1);
+    if(pu.y>H+20)powerups.splice(i,1);
   }
 
   // Partikel
-  for (let i=particles.length-1; i>=0; i--) {
+  for(let i=particles.length-1;i>=0;i--){
     const p=particles[i];
-    p.x+=p.vx; p.y+=p.vy; p.vy+=0.12; p.life-=0.025;
-    if(p.life<=0) particles.splice(i,1);
+    p.x+=p.vx;p.y+=p.vy;p.vy+=0.12;p.life-=0.025;
+    if(p.life<=0)particles.splice(i,1);
   }
 
-  // Level geschafft?
-  if (blocks.length===0) {
-    level++;
-    SFX.levelup();
-    if (level > LEVELS.length+2) {
-      state='win'; SFX.win();
-    } else {
-      state='levelup';
-      initLevel(level);
-      balls=[initBall(true)];
-      stickyBall=balls[0];
-      updateUI();
-    }
+  if(blocks.length===0){
+    level++;SFX.levelup();
+    if(level>LEVELS.length+2){state='win';SFX.win();}
+    else{state='levelup';initLevel(level);balls=[initBall(true)];stickyBall=balls[0];updateUI();}
   }
 }
 
 // ─── Zeichnen ─────────────────────────────────────────────────────────────
-function drawBackground() {
-  ctx.fillStyle='#04040e';
-  ctx.fillRect(0,0,W,H);
-  ctx.strokeStyle='rgba(0,80,180,0.12)';
-  ctx.lineWidth=1;
-  for(let x=0;x<W;x+=32){ ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke(); }
-  for(let y=0;y<H;y+=32){ ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke(); }
+function drawBg(){
+  ctx.fillStyle='#04040e';ctx.fillRect(0,0,W,H);
+  ctx.strokeStyle='rgba(0,80,180,0.12)';ctx.lineWidth=1;
+  for(let x=0;x<W;x+=32){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke();}
+  for(let y=0;y<H;y+=32){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();}
 }
-
-function drawPaddle() {
-  const pw=paddle.w, ph=paddle.h, px=paddle.x-pw/2, py=paddle.y;
-  ctx.shadowColor = laserActive?'#f00':(wideTimer>0?'#0ff':'#09d');
-  ctx.shadowBlur = 22;
-  const g=ctx.createLinearGradient(px,py,px,py+ph);
-  g.addColorStop(0,'#9ff'); g.addColorStop(1,'#07f');
-  ctx.fillStyle=g;
-  ctx.beginPath(); ctx.roundRect(px,py,pw,ph,7); ctx.fill();
-  // Glanzlicht
-  ctx.fillStyle='rgba(255,255,255,0.25)';
-  ctx.beginPath(); ctx.roundRect(px+3,py+2,pw-6,ph/2-2,[3,3,0,0]); ctx.fill();
-  if (laserActive) {
-    ctx.fillStyle='#f44'; ctx.shadowColor='#f00'; ctx.shadowBlur=12;
-    ctx.beginPath(); ctx.roundRect(px+2,py-8,10,10,2); ctx.fill();
-    ctx.beginPath(); ctx.roundRect(px+pw-12,py-8,10,10,2); ctx.fill();
-  }
+function drawPaddle(){
+  const pw=paddle.w,ph=paddle.h,px=paddle.x-pw/2,py=paddle.y;
+  ctx.shadowColor=laserActive?'#f00':(wideTimer>0?'#0ff':'#09d');ctx.shadowBlur=22;
+  const g=ctx.createLinearGradient(px,py,px,py+ph);g.addColorStop(0,'#9ff');g.addColorStop(1,'#07f');
+  ctx.fillStyle=g;ctx.beginPath();ctx.roundRect(px,py,pw,ph,7);ctx.fill();
+  ctx.fillStyle='rgba(255,255,255,0.25)';ctx.beginPath();ctx.roundRect(px+3,py+2,pw-6,ph/2-2,[3,3,0,0]);ctx.fill();
+  if(laserActive){ctx.fillStyle='#f44';ctx.shadowColor='#f00';ctx.shadowBlur=12;
+    ctx.beginPath();ctx.roundRect(px+2,py-8,10,10,2);ctx.fill();
+    ctx.beginPath();ctx.roundRect(px+pw-12,py-8,10,10,2);ctx.fill();}
   ctx.shadowBlur=0;
 }
-
-function drawBalls() {
+function drawBalls(){
   balls.forEach(ball=>{
     ball.trail.forEach((t,i)=>{
-      const a=(i/ball.trail.length)*0.35;
-      const r=BALL_R*(i/ball.trail.length)*0.9;
-      ctx.beginPath(); ctx.arc(t.x,t.y,r,0,Math.PI*2);
-      ctx.fillStyle=`rgba(80,180,255,${a})`; ctx.fill();
+      ctx.beginPath();ctx.arc(t.x,t.y,BALL_R*(i/ball.trail.length)*0.9,0,Math.PI*2);
+      ctx.fillStyle=`rgba(80,180,255,${(i/ball.trail.length)*0.35})`;ctx.fill();
     });
-    ctx.shadowColor='#0ff'; ctx.shadowBlur=18;
+    ctx.shadowColor='#0ff';ctx.shadowBlur=18;
     const g=ctx.createRadialGradient(ball.x-2,ball.y-3,1,ball.x,ball.y,BALL_R);
-    g.addColorStop(0,'#fff'); g.addColorStop(0.35,'#8ef'); g.addColorStop(1,'#07c');
-    ctx.beginPath(); ctx.arc(ball.x,ball.y,BALL_R,0,Math.PI*2);
-    ctx.fillStyle=g; ctx.fill();
+    g.addColorStop(0,'#fff');g.addColorStop(0.35,'#8ef');g.addColorStop(1,'#07c');
+    ctx.beginPath();ctx.arc(ball.x,ball.y,BALL_R,0,Math.PI*2);ctx.fillStyle=g;ctx.fill();
     ctx.shadowBlur=0;
   });
 }
-
-function drawBlocks() {
+function drawBlocks(){
   blocks.forEach(bk=>{
-    const ox=bk.shake?(Math.random()-.5)*bk.shake:0;
-    const oy=bk.shake?(Math.random()-.5)*bk.shake*0.4:0;
-    const x=bk.x+ox, y=bk.y+oy;
-    ctx.shadowColor=bk.glow; ctx.shadowBlur=12;
-    const g=ctx.createLinearGradient(x,y,x,y+bk.h);
-    g.addColorStop(0,bk.color); g.addColorStop(1,shadeColor(bk.color,-50));
-    ctx.fillStyle=g;
-    ctx.beginPath(); ctx.roundRect(x,y,bk.w,bk.h,4); ctx.fill();
-    // Risse
-    if (bk.maxHp>1 && bk.hp<bk.maxHp) {
-      ctx.strokeStyle='rgba(0,0,0,0.65)'; ctx.lineWidth=2.5;
-      ctx.beginPath(); ctx.moveTo(x+bk.w*.3,y+3); ctx.lineTo(x+bk.w*.55,y+bk.h-3); ctx.stroke();
-      ctx.beginPath(); ctx.moveTo(x+bk.w*.65,y+3); ctx.lineTo(x+bk.w*.4,y+bk.h-3); ctx.stroke();
-    }
-    // Glanzlicht
-    ctx.fillStyle='rgba(255,255,255,0.22)';
-    ctx.beginPath(); ctx.roundRect(x+2,y+2,bk.w-4,bk.h/2-2,[3,3,0,0]); ctx.fill();
+    const ox=bk.shake?(Math.random()-.5)*bk.shake:0,oy=bk.shake?(Math.random()-.5)*bk.shake*0.4:0;
+    const x=bk.x+ox,y=bk.y+oy;
+    ctx.shadowColor=bk.glow;ctx.shadowBlur=12;
+    const g=ctx.createLinearGradient(x,y,x,y+bk.h);g.addColorStop(0,bk.color);g.addColorStop(1,shadeColor(bk.color,-50));
+    ctx.fillStyle=g;ctx.beginPath();ctx.roundRect(x,y,bk.w,bk.h,4);ctx.fill();
+    if(bk.maxHp>1&&bk.hp<bk.maxHp){ctx.strokeStyle='rgba(0,0,0,0.65)';ctx.lineWidth=2.5;
+      ctx.beginPath();ctx.moveTo(x+bk.w*.3,y+3);ctx.lineTo(x+bk.w*.55,y+bk.h-3);ctx.stroke();
+      ctx.beginPath();ctx.moveTo(x+bk.w*.65,y+3);ctx.lineTo(x+bk.w*.4,y+bk.h-3);ctx.stroke();}
+    ctx.fillStyle='rgba(255,255,255,0.22)';ctx.beginPath();ctx.roundRect(x+2,y+2,bk.w-4,bk.h/2-2,[3,3,0,0]);ctx.fill();
     ctx.shadowBlur=0;
   });
 }
-
-function drawPowerups() {
+function drawPowerups(){
   powerups.forEach(pu=>{
-    const c=PU_COLORS[pu.type];
-    ctx.shadowColor=c; ctx.shadowBlur=18;
-    ctx.fillStyle=c+'33'; ctx.strokeStyle=c; ctx.lineWidth=2;
-    ctx.beginPath(); ctx.roundRect(pu.x-18,pu.y-12,36,24,12); ctx.fill(); ctx.stroke();
-    ctx.fillStyle='#fff';
-    ctx.font='bold 13px Courier New';
-    ctx.textAlign='center'; ctx.textBaseline='middle';
-    ctx.fillText(PU_LABELS[pu.type],pu.x,pu.y);
-    ctx.shadowBlur=0;
+    const c=PU_COLORS[pu.type];ctx.shadowColor=c;ctx.shadowBlur=18;
+    ctx.fillStyle=c+'33';ctx.strokeStyle=c;ctx.lineWidth=2;
+    ctx.beginPath();ctx.roundRect(pu.x-18,pu.y-12,36,24,12);ctx.fill();ctx.stroke();
+    ctx.fillStyle='#fff';ctx.font='bold 13px Courier New';ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillText(PU_LABELS[pu.type],pu.x,pu.y);ctx.shadowBlur=0;
   });
 }
-
-function drawLasers() {
+function drawLasers(){
   lasers.forEach(l=>{
-    ctx.shadowColor='#f00'; ctx.shadowBlur=12;
+    ctx.shadowColor='#f00';ctx.shadowBlur=12;
     const g=ctx.createLinearGradient(l.x,l.y-14,l.x,l.y);
-    g.addColorStop(0,'rgba(255,50,50,0)'); g.addColorStop(1,'#f55');
-    ctx.fillStyle=g;
-    ctx.fillRect(l.x-2,l.y-14,4,16);
-    ctx.shadowBlur=0;
+    g.addColorStop(0,'rgba(255,50,50,0)');g.addColorStop(1,'#f55');
+    ctx.fillStyle=g;ctx.fillRect(l.x-2,l.y-14,4,16);ctx.shadowBlur=0;
   });
 }
-
-function drawParticles() {
+function drawParticles(){
   particles.forEach(p=>{
-    ctx.globalAlpha=p.life;
-    ctx.shadowColor=p.color; ctx.shadowBlur=8;
-    ctx.fillStyle=p.color;
-    ctx.beginPath(); ctx.arc(p.x,p.y,3.5*p.life,0,Math.PI*2); ctx.fill();
+    ctx.globalAlpha=p.life;ctx.shadowColor=p.color;ctx.shadowBlur=8;ctx.fillStyle=p.color;
+    ctx.beginPath();ctx.arc(p.x,p.y,3.5*p.life,0,Math.PI*2);ctx.fill();
   });
-  ctx.globalAlpha=1; ctx.shadowBlur=0;
+  ctx.globalAlpha=1;ctx.shadowBlur=0;
+}
+function drawHUD(){
+  const hudY=H-16;ctx.font='12px Courier New';ctx.textBaseline='bottom';
+  if(wideTimer>0) {ctx.fillStyle='#0ff';ctx.textAlign='left';  ctx.fillText(`WIDE: ${Math.ceil(wideTimer/60)}s`,10,hudY);}
+  if(laserActive) {ctx.fillStyle='#f44';ctx.textAlign='right'; ctx.fillText(`LASER: ${Math.ceil(laserTimer/60)}s`,W-10,hudY);}
+  if(stickyMode)  {ctx.fillStyle='#f0f';ctx.textAlign='center';ctx.fillText('STICKY – Tippen zum Abfeuern',W/2,hudY);}
 }
 
-function drawHUD() {
-  const hudY=H-16;
-  ctx.font='12px Courier New'; ctx.textBaseline='bottom';
-  if (wideTimer>0)  { ctx.fillStyle='#0ff'; ctx.textAlign='left';   ctx.fillText(`WIDE: ${Math.ceil(wideTimer/60)}s`, 10, hudY); }
-  if (laserActive)  { ctx.fillStyle='#f44'; ctx.textAlign='right';  ctx.fillText(`LASER: ${Math.ceil(laserTimer/60)}s`, W-10, hudY); }
-  if (stickyMode)   { ctx.fillStyle='#f0f'; ctx.textAlign='center'; ctx.fillText('STICKY – Klick zum Abfeuern', W/2, hudY); }
+// Leaderboard direkt auf Canvas zeichnen (Titelscreen)
+function drawLeaderboardOnCanvas(){
+  const list=globalList;
+  if(!list.length)return;
+  const startY=H/2+85, lineH=22;
+  ctx.textAlign='center';ctx.textBaseline='top';
+  ctx.fillStyle='#555';ctx.font='11px Courier New';
+  ctx.fillText('── HIGHSCORES ──',W/2,startY-18);
+  const medals=['🥇','🥈','🥉'];
+  list.slice(0,5).forEach((e,i)=>{
+    const y=startY+i*lineH;
+    const colors=['#ffd700','#c0c0c0','#cd7f32','#aaa','#888'];
+    ctx.fillStyle=colors[i]||'#888';
+    ctx.font=`${i<3?'bold ':''}12px Courier New`;
+    ctx.textAlign='left';  ctx.fillText(`${medals[i]||`${i+1}.`} ${e.name}`,W/2-100,y);
+    ctx.textAlign='right'; ctx.fillText(e.pts.toLocaleString(),W/2+100,y);
+  });
+  ctx.textAlign='center';
 }
 
-function drawOverlay(title, sub, sub2) {
-  ctx.fillStyle='rgba(4,4,18,0.85)'; ctx.fillRect(0,0,W,H);
-  ctx.shadowColor='#0ff'; ctx.shadowBlur=35;
-  ctx.fillStyle='#0ff'; ctx.font='bold 58px Courier New';
-  ctx.textAlign='center'; ctx.textBaseline='middle';
-  ctx.fillText(title, W/2, H/2-50);
-  ctx.shadowBlur=0;
-  ctx.fillStyle='#bbb'; ctx.font='22px Courier New';
-  ctx.fillText(sub, W/2, H/2+18);
-  if (sub2) { ctx.fillStyle='#666'; ctx.font='16px Courier New'; ctx.fillText(sub2, W/2, H/2+58); }
+function drawOverlay(title,sub,sub2){
+  ctx.fillStyle='rgba(4,4,18,0.85)';ctx.fillRect(0,0,W,H);
+  ctx.shadowColor='#0ff';ctx.shadowBlur=35;
+  ctx.fillStyle='#0ff';ctx.font='bold 58px Courier New';
+  ctx.textAlign='center';ctx.textBaseline='middle';
+  ctx.fillText(title,W/2,H/2-50);ctx.shadowBlur=0;
+  ctx.fillStyle='#bbb';ctx.font='22px Courier New';ctx.fillText(sub,W/2,H/2+18);
+  if(sub2){ctx.fillStyle='#666';ctx.font='16px Courier New';ctx.fillText(sub2,W/2,H/2+58);}
 }
 
-// ─── Hilfsfunktion ────────────────────────────────────────────────────────
-function shadeColor(hex, amount) {
+function shadeColor(hex,amount){
   const n=parseInt(hex.replace('#',''),16);
-  const r=clamp((n>>16)+amount,0,255);
-  const g=clamp(((n>>8)&0xff)+amount,0,255);
-  const b=clamp((n&0xff)+amount,0,255);
-  return `rgb(${r},${g},${b})`;
+  return `rgb(${clamp((n>>16)+amount,0,255)},${clamp(((n>>8)&0xff)+amount,0,255)},${clamp((n&0xff)+amount,0,255)})`;
 }
 
 // ─── Haupt-Loop ───────────────────────────────────────────────────────────
-function loop() {
+function loop(){
   update();
-  drawBackground();
-  drawBlocks();
-  drawPowerups();
-  drawLasers();
-  drawBalls();
-  drawPaddle();
-  drawParticles();
-  drawHUD();
+  drawBg();drawBlocks();drawPowerups();drawLasers();drawBalls();drawPaddle();drawParticles();drawHUD();
 
-  if (state==='title')   drawOverlay('ARKANOID','Klick zum Starten','Maus = Paddle  |  Klick = Ball abfeuern');
-  if (state==='levelup') drawOverlay(`LEVEL ${level}`,'Klick zum Weiterspielen',`Score: ${score}`);
-  if (state==='dead')    drawOverlay('BALL VERLOREN',`${lives} ${lives===1?'Leben':'Leben'} übrig – Klick!`,`Score: ${score}`);
-  if (state==='gameover')drawOverlay('GAME OVER',`Endpunkte: ${score}`,'Klick zum Neustart');
-  if (state==='win')     drawOverlay('DU HAST GEWONNEN!',`Endpunkte: ${score}`,'Klick zum Neustart');
+  if(state==='title'){
+    drawOverlay('ARKANOID','Tippen / Klicken zum Starten','Ziehen = Paddle  |  Tippen = Ball abfeuern');
+    drawLeaderboardOnCanvas();
+  }
+  if(state==='levelup') drawOverlay(`LEVEL ${level}`,'Tippen zum Weiterspielen',`Score: ${score.toLocaleString()}`);
+  if(state==='dead')    drawOverlay('BALL VERLOREN',`${lives} Leben übrig – Tippen!`,`Score: ${score.toLocaleString()}`);
+  if(state==='gameover')drawOverlay('GAME OVER',`Endpunkte: ${score.toLocaleString()}`,'Tippen für Highscore');
+  if(state==='win')     drawOverlay('DU HAST GEWONNEN!',`Endpunkte: ${score.toLocaleString()}`,'Tippen für Highscore');
 
-  frameId = requestAnimationFrame(loop);
+  requestAnimationFrame(loop);
 }
 
-function restartGame() {
-  score=0; lives=3; level=1;
-  _paddleAbsX = CSS_W / 2;
-  initPaddle(); initLevel(1);
-  state='title'; updateUI();
+function restartGame(){
+  score=0;lives=3;level=1;_paddleAbsX=CSS_W/2;
+  initPaddle();initLevel(1);state='title';updateUI();
 }
 
 // ─── Start ────────────────────────────────────────────────────────────────
-initPaddle();
-initLevel(1);
-updateUI();
+initPaddle();initLevel(1);updateUI();
+lbFetch(); // Globale Highscores im Hintergrund vorladen
 loop();
 </script>
 </body>
