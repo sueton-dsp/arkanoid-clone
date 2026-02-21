@@ -18,6 +18,14 @@ import ctypes
 import tkinter as tk
 from tkinter import messagebox
 
+# ── CMD-Fenster verstecken (Windows) ────────────────────────────────────────
+try:
+    import ctypes as _ct
+    _ct.windll.user32.ShowWindow(
+        _ct.windll.kernel32.GetConsoleWindow(), 0)
+except Exception:
+    pass
+
 # DPI-Bewusstsein MUSS vor dem ersten Tk-Fenster gesetzt werden
 try:
     ctypes.windll.shcore.SetProcessDpiAwareness(2)
@@ -93,63 +101,99 @@ class ScreenshotApp:
     # UI
     # ------------------------------------------------------------------
 
+    # ── Farben (passt zum Editor-Design) ─────────────────────────────
+    BG        = '#F0F2F5'
+    BG_TOP    = '#FFFFFF'
+    ACCENT    = '#0078D4'
+    ACCENT_H  = '#005FA3'
+    BTN_NORM  = '#E8EAF0'
+    BTN_FG    = '#1A1A2E'
+    FG_MUTED  = '#666680'
+    DIVIDER   = '#C8CDD8'
+
     def _build_ui(self):
-        self.root.configure(bg='#2D2D2D')
-        self.root.geometry('260x310')
+        self.root.configure(bg=self.BG)
+        # Horizontales, schmales Fenster (wie eine Toolbar)
+        self.root.geometry('680x64')
+        self.root.minsize(680, 64)
+        self.root.resizable(True, False)
 
-        # Titel
-        tk.Label(
-            self.root,
-            text='📷  Screenshot-Tool',
-            bg='#2D2D2D', fg='white',
-            font=('Segoe UI', 12, 'bold')
-        ).pack(pady=(16, 8))
+        # ── Obere Leiste (Logo + Buttons) ─────────────────────────────
+        bar = tk.Frame(self.root, bg=self.BG_TOP,
+                       highlightthickness=1,
+                       highlightbackground=self.DIVIDER)
+        bar.pack(fill='both', expand=True)
 
-        # Buttons
-        buttons = [
-            ('Region auswählen\n[Print Screen]',
-             self.start_region),
-            ('Vollbild\n[Ctrl+Shift+F]',
-             self.start_fullscreen),
-            ('Fenster auswählen\n[Ctrl+Shift+W]',
-             self.start_window),
-            ('Scrolling Capture\n[Ctrl+Shift+S]',
-             self.start_scrolling),
+        # Logo
+        tk.Label(bar, text='📷',
+                 bg=self.BG_TOP, fg=self.ACCENT,
+                 font=('Segoe UI', 16)
+                 ).pack(side='left', padx=(10, 2), pady=6)
+        tk.Label(bar, text='Screenshot',
+                 bg=self.BG_TOP, fg=self.BTN_FG,
+                 font=('Segoe UI', 10, 'bold')
+                 ).pack(side='left', padx=(0, 12), pady=6)
+
+        # Trennlinie
+        tk.Frame(bar, bg=self.DIVIDER,
+                 width=1).pack(side='left', fill='y', pady=6)
+
+        # Capture-Buttons
+        capture_btns = [
+            ('✂  Region',     'Print Screen', self.start_region),
+            ('🖥  Vollbild',   'Ctrl+Shift+F', self.start_fullscreen),
+            ('🪟  Fenster',    'Ctrl+Shift+W', self.start_window),
+            ('📜  Scrolling',  'Ctrl+Shift+S', self.start_scrolling),
         ]
 
-        for label, cmd in buttons:
-            tk.Button(
-                self.root,
+        for label, hotkey, cmd in capture_btns:
+            btn_frame = tk.Frame(bar, bg=self.BG_TOP)
+            btn_frame.pack(side='left', padx=2, pady=6)
+
+            btn = tk.Button(
+                btn_frame,
                 text=label,
                 font=('Segoe UI', 9),
-                bg='#3C3C3C', fg='white',
-                activebackground='#0078D4',
+                bg=self.BTN_NORM, fg=self.BTN_FG,
+                activebackground=self.ACCENT,
+                activeforeground='white',
                 relief='flat',
-                width=24,
-                command=cmd
-            ).pack(padx=12, pady=4)
+                padx=10, pady=4,
+                cursor='hand2',
+                command=cmd)
+            btn.pack()
 
-        # Status
+            tk.Label(btn_frame,
+                     text=hotkey,
+                     bg=self.BG_TOP, fg=self.FG_MUTED,
+                     font=('Segoe UI', 7)
+                     ).pack()
+
+        # Trennlinie rechts
+        tk.Frame(bar, bg=self.DIVIDER,
+                 width=1).pack(side='left', fill='y', pady=6, padx=4)
+
+        # Status-Anzeige
         self._status_var = tk.StringVar(value='Bereit')
-        tk.Label(
-            self.root,
-            textvariable=self._status_var,
-            bg='#2D2D2D', fg='#AAAAAA',
-            font=('Segoe UI', 8),
-            wraplength=240
-        ).pack(pady=(8, 4))
+        tk.Label(bar,
+                 textvariable=self._status_var,
+                 bg=self.BG_TOP, fg=self.FG_MUTED,
+                 font=('Segoe UI', 8),
+                 width=18, anchor='w'
+                 ).pack(side='left', padx=6)
 
-        # Schließen
-        tk.Button(
-            self.root,
-            text='Beenden',
-            font=('Segoe UI', 9),
-            bg='#5C2020', fg='white',
-            activebackground='#8B0000',
-            relief='flat',
-            width=24,
-            command=self.root.quit
-        ).pack(padx=12, pady=(4, 16))
+        # Beenden-Button (rechts)
+        tk.Button(bar,
+                  text='✕',
+                  font=('Segoe UI', 10),
+                  bg=self.BG_TOP, fg=self.FG_MUTED,
+                  activebackground='#CC0000',
+                  activeforeground='white',
+                  relief='flat',
+                  padx=8, pady=4,
+                  cursor='hand2',
+                  command=self.root.quit
+                  ).pack(side='right', padx=6, pady=6)
 
         self.root.protocol('WM_DELETE_WINDOW', self.root.quit)
 
