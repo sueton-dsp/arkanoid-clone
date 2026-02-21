@@ -261,6 +261,8 @@ function lbSetStatus(msg) {
 }
 
 async function lbOpen(withEntry) {
+  // Pointer Lock freigeben damit die Maus im Leaderboard funktioniert
+  if (document.pointerLockElement) document.exitPointerLock();
   pendingScore = withEntry ? score : null;
   document.getElementById('nameForm').style.display = 'none';
   lbSetStatus('Lade Highscores…');
