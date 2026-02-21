@@ -199,31 +199,25 @@ function touchToCanvasX(touch) {
   return (touch.clientX - rect.left) * (CSS_W / rect.width);
 }
 
-// ─── Globales Leaderboard via GitHub Gist ─────────────────────────────────
-// Scores werden in einem öffentlichen Gist gespeichert → für alle sichtbar
-const GIST_ID    = '91cc0de03d387c6b01570dafc958c52d';
-const GIST_FILE  = 'leaderboard.json';
-const GIST_API   = `https://api.github.com/gists/${GIST_ID}`;
-// Öffentlicher read-only raw-URL (kein Auth nötig zum Lesen)
-const GIST_RAW   = `https://gist.githubusercontent.com/sueton-dsp/${GIST_ID}/raw/${GIST_FILE}`;
-// Token zum Schreiben (nur PATCH braucht Auth) – öffentlich sichtbar, nur gist-Scope
-const GIST_TOKEN = 'github_pat_' + '11BQHUKFI0' + 'dXFNbcqPuvp4_' + 'LBJIfxbBNKXqCgWsTxpyBTKH4h2u6R7KSmB3JVxL2NTQSC3DGD4' + 'uEwPeqw';
-
+// ─── Leaderboard via localStorage ─────────────────────────────────────────
+// Scores werden lokal im Browser gespeichert – zuverlässig, kein Server nötig
+const LB_STORAGE_KEY = 'arkanoid_leaderboard_v1';
 const LB_MAX = 10;
 let   pendingScore = null;
 let   newEntryIdx  = -1;
 let   globalList   = [];   // gecachte Liste
 
-// Globale Liste vom Gist laden
+// Liste aus localStorage laden
 async function lbFetch() {
   try {
-    const res  = await fetch(GIST_RAW + '?t=' + Date.now()); // cache-bust
-    globalList = await res.json();
+    const raw = localStorage.getItem(LB_STORAGE_KEY);
+    globalList = raw ? JSON.parse(raw) : [];
+    if (!Array.isArray(globalList)) globalList = [];
   } catch(e) { globalList = []; }
   return globalList;
 }
 
-// Score in Gist schreiben
+// Score in localStorage schreiben
 async function lbAddGlobal(name, pts) {
   await lbFetch();
   const cleanName = (name.trim().substring(0,12)) || 'Anonym';
@@ -231,11 +225,7 @@ async function lbAddGlobal(name, pts) {
   globalList.sort((a,b) => b.pts - a.pts);
   if (globalList.length > LB_MAX) globalList.length = LB_MAX;
   try {
-    await fetch(GIST_API, {
-      method: 'PATCH',
-      headers: { 'Authorization': `token ${GIST_TOKEN}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ files: { [GIST_FILE]: { content: JSON.stringify(globalList) } } }),
-    });
+    localStorage.setItem(LB_STORAGE_KEY, JSON.stringify(globalList));
   } catch(e) { console.warn('Leaderboard-Speichern fehlgeschlagen:', e); }
   return globalList.findIndex(e => e.name === cleanName && e.pts === pts);
 }
@@ -273,13 +263,16 @@ function lbSetStatus(msg) {
 }
 
 async function lbOpen(withEntry) {
+  // Pointer Lock freigeben, damit Maus im Overlay funktioniert
+  if (document.pointerLockElement) document.exitPointerLock();
+
   pendingScore = withEntry ? score : null;
   document.getElementById('nameForm').style.display = 'none';
-  lbSetStatus('Lade Highscores…');
   document.getElementById('lbList').innerHTML = '';
+  document.getElementById('lbEmpty').style.display = 'none';
   document.getElementById('lbOverlay').classList.add('show');
 
-  await lbFetch();
+  await lbFetch();          // sofort aus localStorage – kein Netzwerk nötig
   lbRender(globalList, -1);
 
   if (withEntry && lbIsHighscore(score)) {
@@ -310,14 +303,10 @@ document.getElementById('lbCloseBtn').addEventListener('click', () => {
   lbClose();
   if (state === 'gameover' || state === 'win') restartGame();
 });
-document.getElementById('lbClearBtn').addEventListener('click', async () => {
-  if (confirm('Alle globalen Highscores löschen?')) {
+document.getElementById('lbClearBtn').addEventListener('click', () => {
+  if (confirm('Alle Highscores löschen?')) {
     globalList = [];
-    await fetch(GIST_API, {
-      method: 'PATCH',
-      headers: { 'Authorization': `token ${GIST_TOKEN}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ files: { [GIST_FILE]: { content: '[]' } } }),
-    });
+    localStorage.removeItem(LB_STORAGE_KEY);
     lbRender([], -1);
   }
 });
@@ -580,7 +569,10 @@ function update(){
   if(balls.length===0){
     lives--;updateUI();SFX.lose();
     state=lives<=0?'gameover':'dead';
-    if(state==='gameover')SFX.gameover();
+    if(state==='gameover'){
+      SFX.gameover();
+      setTimeout(()=>{ if(state==='gameover') lbOpen(true); }, 2000);
+    }
   }
 
   // Laser
@@ -625,7 +617,7 @@ function update(){
 
   if(blocks.length===0){
     level++;SFX.levelup();
-    if(level>LEVELS.length+2){state='win';SFX.win();}
+    if(level>LEVELS.length+2){state='win';SFX.win();setTimeout(()=>{ if(state==='win') lbOpen(true); }, 2000);}
     else{state='levelup';initLevel(level);balls=[initBall(true)];stickyBall=balls[0];updateUI();}
   }
 }
