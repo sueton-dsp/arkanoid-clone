@@ -1,0 +1,12 @@
+# Python Cache
+__pycache__/
+*.pyc
+*.pyo
+
+# Laufzeit-Verlaufsdaten (werden zur Laufzeit erzeugt)
+history/
+
+# PyInstaller Output
+dist/
+build/
+*.spec
