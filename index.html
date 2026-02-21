@@ -31,6 +31,17 @@
     justify-content:center;
   }
   .ui-item span { color:#0ff; font-weight:bold; }
+  #lbOpenBtn {
+    background:transparent;
+    border:1px solid #0ff;
+    border-radius:4px;
+    color:#0ff;
+    font-size:clamp(12px,3vw,18px);
+    padding:2px 8px;
+    cursor:pointer;
+    transition:background 0.15s;
+  }
+  #lbOpenBtn:hover { background:#0ff2; }
   #canvas {
     border:2px solid #0ff;
     box-shadow:0 0 30px #0ff4, 0 0 60px #00f4;
@@ -146,6 +157,7 @@
   <div class="ui-item">SCORE: <span id="scoreDisplay">0</span></div>
   <div class="ui-item">LEVEL: <span id="levelDisplay">1</span></div>
   <div class="ui-item">LIVES: <span id="livesDisplay">♥♥♥</span></div>
+  <div class="ui-item"><button id="lbOpenBtn" onclick="lbOpen(false)" title="Highscores anzeigen">🏆</button></div>
 </div>
 <canvas id="canvas"></canvas>
 <div id="msg">Tippen / Klicken zum Starten</div>
