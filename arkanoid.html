@@ -429,15 +429,18 @@ document.addEventListener('mousemove', e=>{
 C.addEventListener('click', ()=>{
   try{getAudio().resume();}catch(e){}
   if(!document.pointerLockElement) C.requestPointerLock().catch(()=>{});
-  handleTap();
+  if(!_wasTouched) handleTap();   // nur wenn kein Touch vorausgegangen (verhindert Doppelaufruf)
+  _wasTouched = false;
 });
 
 // ─── Eingabe: Touch ───────────────────────────────────────────────────────
 let _lastTouchX = null;
+let _wasTouched = false;  // verhindert dass touchstart + click handleTap() doppelt aufrufen
 
 C.addEventListener('touchstart', e=>{
   e.preventDefault();
   try{getAudio().resume();}catch(err){}
+  _wasTouched = true;
   if(e.touches.length>0){
     _lastTouchX = touchToCanvasX(e.touches[0]);
     paddle.targetX = _lastTouchX;
