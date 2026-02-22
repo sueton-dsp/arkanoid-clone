@@ -138,7 +138,7 @@ class AnnotationEditor:
         max_w = int(sw * 0.9)
         max_h = int(sh * 0.92)
         win_w = min(iw + 120, max_w)    # 120px für Toolbar
-        win_h = min(ih + 200, max_h)    # 200px für Menü + Filmstreifen + Status
+        win_h = min(ih + 230, max_h)    # 230px für Menü + Toolbar + Filmstreifen + Status
         self.win.geometry(f'{win_w}x{win_h}')
 
         self._build_menu()
@@ -155,20 +155,56 @@ class AnnotationEditor:
     # GUI-Aufbau
     # ------------------------------------------------------------------
 
-    # Helles Design – Farben
-    BG_MAIN    = '#F0F2F5'   # Fensterhintergrund
-    BG_TOOLBAR = '#FFFFFF'   # Toolbar
-    BG_CANVAS  = '#D8DCE0'   # Canvas-Hintergrund
-    BG_STRIP   = '#F0F2F5'   # Filmstreifen
-    BG_CELL    = '#FFFFFF'   # Thumbnail-Zelle
-    FG_MAIN    = '#1A1A2E'   # Haupttext
-    FG_MUTED   = '#666680'   # Nebentext
-    ACCENT     = '#0078D4'   # Akzentfarbe (Blau)
-    ACCENT_HOV = '#005FA3'   # Hover
-    BTN_SEL    = '#0078D4'   # Aktiver Button
-    BTN_NORM   = '#E8EAF0'   # Normaler Button
-    BTN_FG     = '#1A1A2E'
-    DIVIDER    = '#C8CDD8'
+    # Helles Design – Farben (verfeinerte Palette)
+    BG_MAIN      = '#F5F7FA'   # Fensterhintergrund
+    BG_TOOLBAR   = '#FFFFFF'   # Toolbar
+    BG_CANVAS    = '#C8CDD5'   # Canvas-Hintergrund
+    BG_STRIP     = '#F5F7FA'   # Filmstreifen
+    BG_CELL      = '#FFFFFF'   # Thumbnail-Zelle
+    FG_MAIN      = '#1E293B'   # Haupttext
+    FG_MUTED     = '#94A3B8'   # Nebentext
+    ACCENT       = '#0078D4'   # Akzentfarbe (Blau)
+    ACCENT_HOV   = '#006ABE'   # Hover Akzent
+    ACCENT_LIGHT = '#EBF3FB'   # Sehr helles Blau (Hover-Hintergrund)
+    BTN_SEL      = '#0078D4'   # Aktiver Button
+    BTN_NORM     = '#F0F2F5'   # Normaler Button
+    BTN_HOV      = '#E4E8EF'   # Hover Button
+    BTN_FG       = '#334155'   # Button-Text
+    DIVIDER      = '#E2E8F0'   # Trennlinie
+    DANGER       = '#DC2626'   # Lösch-Rot
+    DANGER_HOV   = '#B91C1C'   # Lösch-Rot Hover
+
+    # ------------------------------------------------------------------
+    # Hover-Hilfsmethoden
+    # ------------------------------------------------------------------
+
+    def _add_hover(self, widget: tk.Widget,
+                   hover_bg: str, hover_fg: str,
+                   normal_bg: str, normal_fg: str):
+        """Fügt einfache Hintergrund/Textfarben-Hover-Effekte hinzu."""
+        widget.bind('<Enter>',
+                    lambda e: widget.config(bg=hover_bg, fg=hover_fg))
+        widget.bind('<Leave>',
+                    lambda e: widget.config(bg=normal_bg, fg=normal_fg))
+
+    def _add_tool_hover(self, btn: tk.Button, tool_id: str):
+        """Hover-Effekte für Werkzeug-Buttons – berücksichtigt Auswahlstatus."""
+        def on_enter(e):
+            if self.active_tool != tool_id:
+                btn.config(bg=self.ACCENT_LIGHT, fg=self.ACCENT)
+
+        def on_leave(e):
+            if self.active_tool == tool_id:
+                btn.config(bg=self.BTN_SEL, fg='white')
+            else:
+                btn.config(bg=self.BTN_NORM, fg=self.BTN_FG)
+
+        btn.bind('<Enter>', on_enter)
+        btn.bind('<Leave>', on_leave)
+
+    # ------------------------------------------------------------------
+    # GUI-Aufbau
+    # ------------------------------------------------------------------
 
     def _build_menu(self):
         menubar = tk.Menu(self.win, bg=self.BG_TOOLBAR, fg=self.FG_MAIN,
@@ -194,62 +230,76 @@ class AnnotationEditor:
         self.win.config(menu=menubar, bg=self.BG_MAIN)
 
     def _build_toolbar(self):
-        """Horizontale Werkzeugleiste oben."""
+        """Horizontale Werkzeugleiste oben mit Hover-Effekten."""
         self.toolbar = tk.Frame(self.win, bg=self.BG_TOOLBAR,
                                 relief='flat', bd=0,
                                 highlightthickness=1,
                                 highlightbackground=self.DIVIDER)
         self.toolbar.pack(side='top', fill='x')
 
+        # Innerer Rahmen mit Padding
+        inner = tk.Frame(self.toolbar, bg=self.BG_TOOLBAR)
+        inner.pack(fill='x', padx=4, pady=3)
+
         # ── Werkzeug-Buttons ──────────────────────────────────────────
         self._tool_buttons: dict[str, tk.Button] = {}
         for tool_id, symbol, label in self.TOOLS:
             btn = tk.Button(
-                self.toolbar,
+                inner,
                 text=f'{symbol}  {label}',
                 font=('Segoe UI', 9),
                 bg=self.BTN_NORM, fg=self.BTN_FG,
                 activebackground=self.ACCENT,
                 activeforeground='white',
                 relief='flat',
-                padx=8, pady=5,
+                padx=10, pady=5,
+                bd=0,
                 cursor='hand2',
                 command=lambda t=tool_id: self._select_tool(t)
             )
-            btn.pack(side='left', padx=2, pady=4)
+            btn.pack(side='left', padx=1)
             self._tool_buttons[tool_id] = btn
+            self._add_tool_hover(btn, tool_id)
 
         # ── Trennlinie ────────────────────────────────────────────────
-        tk.Frame(self.toolbar, bg=self.DIVIDER,
-                 width=1).pack(side='left', fill='y', padx=6, pady=4)
+        tk.Frame(inner, bg=self.DIVIDER,
+                 width=1).pack(side='left', fill='y', padx=8, pady=2)
 
-        # ── Farb-Button ───────────────────────────────────────────────
-        tk.Label(self.toolbar, text='Farbe:',
+        # ── Farb-Swatch (Frame statt Button) ──────────────────────────
+        tk.Label(inner, text='Farbe',
                  bg=self.BG_TOOLBAR, fg=self.FG_MUTED,
-                 font=('Segoe UI', 9)).pack(side='left', padx=(4, 2))
-        self._color_btn = tk.Button(
-            self.toolbar,
-            text='  ██  ',
-            font=('Segoe UI', 9),
+                 font=('Segoe UI', 8)).pack(side='left', padx=(0, 4))
+
+        self._color_swatch = tk.Frame(
+            inner,
             bg=self.tool_color,
-            fg=self.tool_color,
-            relief='flat',
-            padx=4, pady=5,
-            cursor='hand2',
-            command=self._pick_color)
-        self._color_btn.pack(side='left', padx=2, pady=4)
+            width=24, height=24,
+            highlightthickness=2,
+            highlightbackground=self.DIVIDER,
+            cursor='hand2')
+        self._color_swatch.pack(side='left', padx=(0, 8))
+        self._color_swatch.pack_propagate(False)
+        self._color_swatch.bind('<Button-1>', lambda e: self._pick_color())
+        self._color_swatch.bind(
+            '<Enter>',
+            lambda e: self._color_swatch.config(
+                highlightbackground=self.ACCENT))
+        self._color_swatch.bind(
+            '<Leave>',
+            lambda e: self._color_swatch.config(
+                highlightbackground=self.DIVIDER))
 
         # ── Trennlinie ────────────────────────────────────────────────
-        tk.Frame(self.toolbar, bg=self.DIVIDER,
-                 width=1).pack(side='left', fill='y', padx=6, pady=4)
+        tk.Frame(inner, bg=self.DIVIDER,
+                 width=1).pack(side='left', fill='y', padx=8, pady=2)
 
         # ── Strichbreite ──────────────────────────────────────────────
-        tk.Label(self.toolbar, text='Breite:',
+        tk.Label(inner, text='Breite',
                  bg=self.BG_TOOLBAR, fg=self.FG_MUTED,
-                 font=('Segoe UI', 9)).pack(side='left', padx=(4, 2))
+                 font=('Segoe UI', 8)).pack(side='left', padx=(0, 3))
         self._width_var = tk.IntVar(value=self.tool_width)
         tk.Spinbox(
-            self.toolbar,
+            inner,
             from_=1, to=20,
             textvariable=self._width_var,
             width=3,
@@ -258,19 +308,19 @@ class AnnotationEditor:
             bg=self.BTN_NORM, fg=self.FG_MAIN,
             buttonbackground=self.BTN_NORM,
             command=self._update_width
-        ).pack(side='left', padx=2, pady=4)
+        ).pack(side='left', padx=(0, 8))
 
         # ── Trennlinie ────────────────────────────────────────────────
-        tk.Frame(self.toolbar, bg=self.DIVIDER,
-                 width=1).pack(side='left', fill='y', padx=6, pady=4)
+        tk.Frame(inner, bg=self.DIVIDER,
+                 width=1).pack(side='left', fill='y', padx=8, pady=2)
 
         # ── Schriftgröße ──────────────────────────────────────────────
-        tk.Label(self.toolbar, text='Schrift:',
+        tk.Label(inner, text='Schrift',
                  bg=self.BG_TOOLBAR, fg=self.FG_MUTED,
-                 font=('Segoe UI', 9)).pack(side='left', padx=(4, 2))
+                 font=('Segoe UI', 8)).pack(side='left', padx=(0, 3))
         self._font_var = tk.IntVar(value=self.font_size)
         tk.Spinbox(
-            self.toolbar,
+            inner,
             from_=8, to=72,
             textvariable=self._font_var,
             width=3,
@@ -279,47 +329,66 @@ class AnnotationEditor:
             bg=self.BTN_NORM, fg=self.FG_MAIN,
             buttonbackground=self.BTN_NORM,
             command=self._update_font
-        ).pack(side='left', padx=2, pady=4)
+        ).pack(side='left')
 
-        # ── Undo-Button rechts ────────────────────────────────────────
-        tk.Button(
-            self.toolbar,
-            text='↩  Rückgängig',
-            font=('Segoe UI', 9),
-            bg=self.BTN_NORM, fg=self.BTN_FG,
-            activebackground=self.ACCENT,
-            activeforeground='white',
-            relief='flat',
-            padx=8, pady=5,
-            cursor='hand2',
-            command=self._undo
-        ).pack(side='right', padx=2, pady=4)
+        # ── Aktions-Buttons rechts ────────────────────────────────────
+        # Trennlinie vor Actions
+        tk.Frame(inner, bg=self.DIVIDER,
+                 width=1).pack(side='right', fill='y', padx=8, pady=2)
 
-        tk.Button(
-            self.toolbar,
-            text='📋  Kopieren',
-            font=('Segoe UI', 9),
-            bg=self.BTN_NORM, fg=self.BTN_FG,
-            activebackground=self.ACCENT,
-            activeforeground='white',
-            relief='flat',
-            padx=8, pady=5,
-            cursor='hand2',
-            command=self.copy_to_clipboard
-        ).pack(side='right', padx=2, pady=4)
-
-        tk.Button(
-            self.toolbar,
+        # Speichern (Primär-Aktion – Akzent)
+        save_btn = tk.Button(
+            inner,
             text='💾  Speichern',
-            font=('Segoe UI', 9),
+            font=('Segoe UI', 9, 'bold'),
             bg=self.ACCENT, fg='white',
             activebackground=self.ACCENT_HOV,
             activeforeground='white',
             relief='flat',
-            padx=8, pady=5,
+            padx=12, pady=5,
+            bd=0,
             cursor='hand2',
-            command=self.save_to_file
-        ).pack(side='right', padx=2, pady=4)
+            command=self.save_to_file)
+        save_btn.pack(side='right', padx=(2, 0))
+        self._add_hover(save_btn,
+                        self.ACCENT_HOV, 'white',
+                        self.ACCENT, 'white')
+
+        # Kopieren
+        copy_btn = tk.Button(
+            inner,
+            text='📋  Kopieren',
+            font=('Segoe UI', 9),
+            bg=self.BTN_NORM, fg=self.BTN_FG,
+            activebackground=self.BTN_HOV,
+            activeforeground=self.FG_MAIN,
+            relief='flat',
+            padx=10, pady=5,
+            bd=0,
+            cursor='hand2',
+            command=self.copy_to_clipboard)
+        copy_btn.pack(side='right', padx=2)
+        self._add_hover(copy_btn,
+                        self.BTN_HOV, self.FG_MAIN,
+                        self.BTN_NORM, self.BTN_FG)
+
+        # Rückgängig
+        undo_btn = tk.Button(
+            inner,
+            text='↩  Undo',
+            font=('Segoe UI', 9),
+            bg=self.BTN_NORM, fg=self.BTN_FG,
+            activebackground=self.BTN_HOV,
+            activeforeground=self.FG_MAIN,
+            relief='flat',
+            padx=10, pady=5,
+            bd=0,
+            cursor='hand2',
+            command=self._undo)
+        undo_btn.pack(side='right', padx=2)
+        self._add_hover(undo_btn,
+                        self.BTN_HOV, self.FG_MAIN,
+                        self.BTN_NORM, self.BTN_FG)
 
         self._select_tool('arrow')
 
@@ -353,7 +422,7 @@ class AnnotationEditor:
 
     def _build_filmstrip(self):
         """Filmstreifen-Panel am unteren Rand des Editors."""
-        STRIP_H = 120
+        STRIP_H = 132
 
         # Trennlinie oben
         tk.Frame(self.win, bg=self.DIVIDER, height=1).pack(
@@ -365,14 +434,19 @@ class AnnotationEditor:
         strip_frame.pack(side='bottom', fill='x')
         strip_frame.pack_propagate(False)
 
-        # Titel-Label
-        tk.Label(strip_frame, text='VERLAUF',
+        # Header-Bereich (Icon + Label)
+        hdr = tk.Frame(strip_frame, bg=self.BG_STRIP)
+        hdr.pack(side='left', fill='y', padx=(12, 4))
+
+        tk.Label(hdr, text='🗂',
+                 bg=self.BG_STRIP, fg=self.ACCENT,
+                 font=('Segoe UI', 18)).pack(pady=(14, 0))
+        tk.Label(hdr, text='VERLAUF',
                  bg=self.BG_STRIP, fg=self.FG_MUTED,
-                 font=('Segoe UI', 8, 'bold')).pack(
-                     side='left', padx=(10, 4), pady=4)
+                 font=('Segoe UI', 7, 'bold')).pack()
 
         tk.Frame(strip_frame, bg=self.DIVIDER,
-                 width=1).pack(side='left', fill='y', pady=6)
+                 width=1).pack(side='left', fill='y', pady=12, padx=(4, 0))
 
         # Scrollbarer Bereich für Thumbnails
         outer = tk.Frame(strip_frame, bg=self.BG_STRIP)
@@ -423,51 +497,72 @@ class AnnotationEditor:
         thumb_img = self.history.load_thumbnail(entry['id'])
         is_active = (entry['id'] == self._current_entry_id)
 
-        cell = tk.Frame(self._strip_inner,
-                        bg=self.ACCENT if is_active else self.BG_CELL,
-                        relief='flat', bd=1,
-                        highlightthickness=2,
-                        highlightbackground=self.ACCENT if is_active else self.DIVIDER)
-        cell.pack(side='left', padx=5, pady=5)
+        # Card mit Rahmen (blau wenn aktiv, grau sonst)
+        card = tk.Frame(
+            self._strip_inner,
+            bg=self.BG_CELL,
+            highlightthickness=2,
+            highlightbackground=self.ACCENT if is_active else self.DIVIDER)
+        card.pack(side='left', padx=5, pady=6)
+
+        # Aktiv-Indikator: farbiger Balken oben
+        if is_active:
+            tk.Frame(card, bg=self.ACCENT, height=3).pack(fill='x', side='top')
 
         # Thumbnail
         if thumb_img:
             photo = ImageTk.PhotoImage(thumb_img)
             self._thumb_photos.append(photo)
-            lbl = tk.Label(cell, image=photo,
-                           bg=self.ACCENT if is_active else self.BG_CELL,
-                           cursor='hand2')
-            lbl.pack(padx=2, pady=(3, 0))
-            lbl.bind('<Button-1>',
-                     lambda e, eid=entry['id']: self._load_from_history(eid))
-            lbl.bind('<Enter>',
-                     lambda e, c=cell: c.config(
-                         highlightbackground=self.ACCENT))
-            lbl.bind('<Leave>',
-                     lambda e, c=cell, eid=entry['id']: c.config(
-                         highlightbackground=self.ACCENT
-                         if eid == self._current_entry_id else self.DIVIDER))
+            img_lbl = tk.Label(card, image=photo,
+                               bg=self.BG_CELL,
+                               cursor='hand2')
+            img_lbl.pack(padx=4, pady=(3 if not is_active else 0, 0))
+            img_lbl.bind('<Button-1>',
+                         lambda e, eid=entry['id']: self._load_from_history(eid))
         else:
-            tk.Label(cell, text='?', bg=self.BG_CELL, fg=self.FG_MUTED,
-                     width=14, height=5).pack()
+            img_lbl = tk.Label(card, text='?',
+                               bg=self.BG_CELL, fg=self.FG_MUTED,
+                               width=14, height=5)
+            img_lbl.pack(padx=4, pady=3)
 
         # Zeitstempel
-        tk.Label(cell,
-                 text=entry.get('timestamp_display', '')[-8:],
-                 bg=self.ACCENT if is_active else self.BG_CELL,
-                 fg='white' if is_active else self.FG_MUTED,
-                 font=('Segoe UI', 7)).pack()
+        ts = entry.get('timestamp_display', '')[-8:]
+        time_lbl = tk.Label(
+            card, text=ts,
+            bg=self.BG_CELL,
+            fg=self.ACCENT if is_active else self.FG_MUTED,
+            font=('Segoe UI', 7, 'bold' if is_active else 'normal'))
+        time_lbl.pack(pady=(1, 0))
 
-        # Löschen-Button
-        tk.Button(cell, text='✕',
-                  font=('Segoe UI', 7),
-                  bg=self.BTN_NORM, fg=self.FG_MUTED,
-                  activebackground='#CC0000',
-                  activeforeground='white',
-                  relief='flat', padx=2, pady=0,
-                  cursor='hand2',
-                  command=lambda eid=entry['id']: self._delete_history_entry(eid)
-                  ).pack(fill='x', padx=2, pady=(0, 3))
+        # Löschen-Button mit rotem Hover
+        del_btn = tk.Button(
+            card, text='✕',
+            font=('Segoe UI', 7),
+            bg=self.BG_CELL, fg=self.FG_MUTED,
+            activebackground=self.DANGER,
+            activeforeground='white',
+            relief='flat', padx=4, pady=1,
+            bd=0, cursor='hand2',
+            command=lambda eid=entry['id']: self._delete_history_entry(eid))
+        del_btn.pack(fill='x', padx=3, pady=(0, 3))
+
+        # Hover-Effekte auf Card
+        def on_card_enter(e):
+            card.config(highlightbackground=self.ACCENT)
+
+        def on_card_leave(e):
+            card.config(
+                highlightbackground=self.ACCENT if is_active else self.DIVIDER)
+
+        for w in [card, img_lbl, time_lbl]:
+            w.bind('<Enter>', on_card_enter)
+            w.bind('<Leave>', on_card_leave)
+
+        # Hover-Effekte auf Löschen-Button
+        del_btn.bind('<Enter>',
+                     lambda e: del_btn.config(bg=self.DANGER, fg='white'))
+        del_btn.bind('<Leave>',
+                     lambda e: del_btn.config(bg=self.BG_CELL, fg=self.FG_MUTED))
 
     def _load_from_history(self, entry_id: str):
         """Lädt einen Screenshot aus dem Verlauf in den Editor."""
@@ -495,10 +590,22 @@ class AnnotationEditor:
 
     def _build_statusbar(self):
         self._status_var = tk.StringVar(value='Bereit')
-        bar = tk.Label(self.win, textvariable=self._status_var,
-                       anchor='w', bg=self.DIVIDER, fg=self.FG_MUTED,
-                       font=('Segoe UI', 9), padx=8, pady=3)
+        bar = tk.Frame(self.win, bg=self.BG_TOOLBAR)
         bar.pack(side='bottom', fill='x')
+
+        row = tk.Frame(bar, bg=self.BG_TOOLBAR)
+        row.pack(fill='x', padx=10, pady=4)
+
+        # Farbiger Punkt als Status-Indikator
+        self._status_dot = tk.Label(
+            row, text='●',
+            bg=self.BG_TOOLBAR, fg=self.ACCENT,
+            font=('Segoe UI', 8))
+        self._status_dot.pack(side='left')
+
+        tk.Label(row, textvariable=self._status_var,
+                 anchor='w', bg=self.BG_TOOLBAR, fg=self.FG_MUTED,
+                 font=('Segoe UI', 8)).pack(side='left', padx=(4, 0))
 
     def _bind_shortcuts(self):
         self.win.bind('<Control-z>', lambda e: self._undo())
@@ -526,7 +633,7 @@ class AnnotationEditor:
                                   title='Farbe wählen')
         if c and c[1]:
             self.tool_color = c[1]
-            self._color_btn.config(bg=self.tool_color, fg=self.tool_color)
+            self._color_swatch.config(bg=self.tool_color)
 
     def _update_width(self):
         self.tool_width = self._width_var.get()

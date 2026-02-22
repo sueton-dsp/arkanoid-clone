@@ -101,99 +101,119 @@ class ScreenshotApp:
     # UI
     # ------------------------------------------------------------------
 
-    # ── Farben (passt zum Editor-Design) ─────────────────────────────
-    BG        = '#F0F2F5'
+    # ── Farben (abgestimmt auf Editor-Design) ────────────────────────
+    BG        = '#F5F7FA'
     BG_TOP    = '#FFFFFF'
     ACCENT    = '#0078D4'
-    ACCENT_H  = '#005FA3'
-    BTN_NORM  = '#E8EAF0'
-    BTN_FG    = '#1A1A2E'
-    FG_MUTED  = '#666680'
-    DIVIDER   = '#C8CDD8'
+    ACCENT_H  = '#006ABE'
+    BTN_NORM  = '#F0F2F5'
+    BTN_FG    = '#334155'
+    FG_MUTED  = '#94A3B8'
+    DIVIDER   = '#E2E8F0'
 
     def _build_ui(self):
         self.root.configure(bg=self.BG)
-        # Horizontales, schmales Fenster (wie eine Toolbar)
-        self.root.geometry('680x64')
-        self.root.minsize(680, 64)
+        # Horizontales, schmales Fenster
+        self.root.geometry('720x72')
+        self.root.minsize(680, 72)
         self.root.resizable(True, False)
 
-        # ── Obere Leiste (Logo + Buttons) ─────────────────────────────
+        # ── Hauptleiste ───────────────────────────────────────────────
         bar = tk.Frame(self.root, bg=self.BG_TOP,
                        highlightthickness=1,
                        highlightbackground=self.DIVIDER)
         bar.pack(fill='both', expand=True)
 
-        # Logo
-        tk.Label(bar, text='📷',
+        # ── Logo-Bereich ──────────────────────────────────────────────
+        logo_frame = tk.Frame(bar, bg=self.BG_TOP)
+        logo_frame.pack(side='left', padx=(12, 8))
+
+        tk.Label(logo_frame, text='📷',
                  bg=self.BG_TOP, fg=self.ACCENT,
-                 font=('Segoe UI', 16)
-                 ).pack(side='left', padx=(10, 2), pady=6)
-        tk.Label(bar, text='Screenshot',
-                 bg=self.BG_TOP, fg=self.BTN_FG,
-                 font=('Segoe UI', 10, 'bold')
-                 ).pack(side='left', padx=(0, 12), pady=6)
+                 font=('Segoe UI', 20)).pack(pady=(2, 0))
+        tk.Label(logo_frame, text='Screenshot',
+                 bg=self.BG_TOP, fg=self.FG_MUTED,
+                 font=('Segoe UI', 7, 'bold')).pack()
 
-        # Trennlinie
+        # Trennlinie nach Logo
         tk.Frame(bar, bg=self.DIVIDER,
-                 width=1).pack(side='left', fill='y', pady=6)
+                 width=1).pack(side='left', fill='y', pady=10, padx=(0, 6))
 
-        # Capture-Buttons
+        # ── Capture-Buttons ───────────────────────────────────────────
         capture_btns = [
-            ('✂  Region',     'Print Screen', self.start_region),
-            ('🖥  Vollbild',   'Ctrl+Shift+F', self.start_fullscreen),
-            ('🪟  Fenster',    'Ctrl+Shift+W', self.start_window),
-            ('📜  Scrolling',  'Ctrl+Shift+S', self.start_scrolling),
+            ('✂',  'Region',    'Print Screen',  self.start_region),
+            ('🖥',  'Vollbild',  'Ctrl+Shift+F',  self.start_fullscreen),
+            ('🪟',  'Fenster',   'Ctrl+Shift+W',  self.start_window),
+            ('📜',  'Scrolling', 'Ctrl+Shift+S',  self.start_scrolling),
         ]
 
-        for label, hotkey, cmd in capture_btns:
-            btn_frame = tk.Frame(bar, bg=self.BG_TOP)
-            btn_frame.pack(side='left', padx=2, pady=6)
+        for icon, label, hotkey, cmd in capture_btns:
+            cell = tk.Frame(bar, bg=self.BG_TOP)
+            cell.pack(side='left', padx=2, pady=6)
 
             btn = tk.Button(
-                btn_frame,
-                text=label,
-                font=('Segoe UI', 9),
+                cell,
+                text=f'{icon}  {label}',
+                font=('Segoe UI', 10),
                 bg=self.BTN_NORM, fg=self.BTN_FG,
                 activebackground=self.ACCENT,
                 activeforeground='white',
                 relief='flat',
-                padx=10, pady=4,
+                padx=12, pady=5,
+                bd=0,
                 cursor='hand2',
                 command=cmd)
             btn.pack()
 
-            tk.Label(btn_frame,
+            tk.Label(cell,
                      text=hotkey,
                      bg=self.BG_TOP, fg=self.FG_MUTED,
-                     font=('Segoe UI', 7)
-                     ).pack()
+                     font=('Segoe UI', 7)).pack()
+
+            # Hover-Effekte
+            btn.bind('<Enter>',
+                     lambda e, b=btn: b.config(bg=self.ACCENT, fg='white'))
+            btn.bind('<Leave>',
+                     lambda e, b=btn: b.config(bg=self.BTN_NORM,
+                                               fg=self.BTN_FG))
 
         # Trennlinie rechts
         tk.Frame(bar, bg=self.DIVIDER,
-                 width=1).pack(side='left', fill='y', pady=6, padx=4)
+                 width=1).pack(side='left', fill='y', pady=10, padx=4)
 
-        # Status-Anzeige
+        # ── Status-Anzeige ────────────────────────────────────────────
         self._status_var = tk.StringVar(value='Bereit')
-        tk.Label(bar,
+        status_row = tk.Frame(bar, bg=self.BG_TOP)
+        status_row.pack(side='left', padx=6)
+
+        tk.Label(status_row, text='●',
+                 bg=self.BG_TOP, fg=self.ACCENT,
+                 font=('Segoe UI', 7)).pack(side='left')
+        tk.Label(status_row,
                  textvariable=self._status_var,
                  bg=self.BG_TOP, fg=self.FG_MUTED,
                  font=('Segoe UI', 8),
-                 width=18, anchor='w'
-                 ).pack(side='left', padx=6)
+                 width=18, anchor='w').pack(side='left', padx=(3, 0))
 
-        # Beenden-Button (rechts)
-        tk.Button(bar,
-                  text='✕',
-                  font=('Segoe UI', 10),
-                  bg=self.BG_TOP, fg=self.FG_MUTED,
-                  activebackground='#CC0000',
-                  activeforeground='white',
-                  relief='flat',
-                  padx=8, pady=4,
-                  cursor='hand2',
-                  command=self.root.quit
-                  ).pack(side='right', padx=6, pady=6)
+        # ── Beenden-Button (rechts, roter Hover) ──────────────────────
+        close_btn = tk.Button(
+            bar,
+            text='✕',
+            font=('Segoe UI', 11),
+            bg=self.BG_TOP, fg=self.FG_MUTED,
+            activebackground='#DC2626',
+            activeforeground='white',
+            relief='flat',
+            padx=10, pady=4,
+            bd=0,
+            cursor='hand2',
+            command=self.root.quit)
+        close_btn.pack(side='right', padx=8, pady=8)
+        close_btn.bind('<Enter>',
+                       lambda e: close_btn.config(bg='#DC2626', fg='white'))
+        close_btn.bind('<Leave>',
+                       lambda e: close_btn.config(bg=self.BG_TOP,
+                                                   fg=self.FG_MUTED))
 
         self.root.protocol('WM_DELETE_WINDOW', self.root.quit)
 
