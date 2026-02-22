@@ -599,6 +599,7 @@ class AnnotationEditor:
 
         self.annotations: list[Annotation] = []
         self.undo_stack:  list[list]        = []
+        self.redo_stack:  list[list]        = []
 
         self.active_tool = 'arrow'
         self.tool_color  = '#FF0000'
@@ -776,7 +777,31 @@ class AnnotationEditor:
                    buttonbackground=self.BTN_NORM,
                    command=self._update_font).pack(side='left')
 
-        # Aktions-Buttons rechts
+        # ── Undo / Redo – Mitte ───────────────────────────────────────
+        tk.Frame(inner, bg=self.DIVIDER, width=1).pack(
+            side='left', fill='y', padx=8, pady=2)
+
+        undo_btn = tk.Button(inner, text='↩  Zurück',
+            font=('Segoe UI', 9),
+            bg=self.BTN_NORM, fg=self.BTN_FG,
+            activebackground=self.BTN_HOV, activeforeground=self.FG_MAIN,
+            relief='flat', padx=10, pady=5, bd=0, cursor='hand2',
+            command=self._undo)
+        undo_btn.pack(side='left', padx=1)
+        self._add_hover(undo_btn, self.BTN_HOV, self.FG_MAIN,
+                        self.BTN_NORM, self.BTN_FG)
+
+        redo_btn = tk.Button(inner, text='↪  Vor',
+            font=('Segoe UI', 9),
+            bg=self.BTN_NORM, fg=self.BTN_FG,
+            activebackground=self.BTN_HOV, activeforeground=self.FG_MAIN,
+            relief='flat', padx=10, pady=5, bd=0, cursor='hand2',
+            command=self._redo)
+        redo_btn.pack(side='left', padx=1)
+        self._add_hover(redo_btn, self.BTN_HOV, self.FG_MAIN,
+                        self.BTN_NORM, self.BTN_FG)
+
+        # ── Aktions-Buttons rechts ────────────────────────────────────
         tk.Frame(inner, bg=self.DIVIDER, width=1).pack(
             side='right', fill='y', padx=8, pady=2)
 
@@ -798,16 +823,6 @@ class AnnotationEditor:
             command=self.copy_to_clipboard)
         copy_btn.pack(side='right', padx=2)
         self._add_hover(copy_btn, self.BTN_HOV, self.FG_MAIN,
-                        self.BTN_NORM, self.BTN_FG)
-
-        undo_btn = tk.Button(inner, text='↩  Undo',
-            font=('Segoe UI', 9),
-            bg=self.BTN_NORM, fg=self.BTN_FG,
-            activebackground=self.BTN_HOV, activeforeground=self.FG_MAIN,
-            relief='flat', padx=10, pady=5, bd=0, cursor='hand2',
-            command=self._undo)
-        undo_btn.pack(side='right', padx=2)
-        self._add_hover(undo_btn, self.BTN_HOV, self.FG_MAIN,
                         self.BTN_NORM, self.BTN_FG)
 
         self._select_tool('arrow')
@@ -982,6 +997,7 @@ class AnnotationEditor:
 
     def _bind_shortcuts(self):
         self.win.bind('<Control-z>', lambda e: self._undo())
+        self.win.bind('<Control-y>', lambda e: self._redo())
         self.win.bind('<Control-s>', lambda e: self.save_to_file())
         self.win.bind('<Control-c>', lambda e: self.copy_to_clipboard())
         for i, (tool_id, _, _) in enumerate(self.TOOLS):
@@ -1143,12 +1159,20 @@ class AnnotationEditor:
 
     def _commit(self, ann: Annotation):
         self.undo_stack.append([a for a in self.annotations])
+        self.redo_stack.clear()   # Neue Aktion löscht Redo-Verlauf
         self.annotations.append(ann)
         self._redraw_canvas()
 
     def _undo(self):
         if self.undo_stack:
+            self.redo_stack.append([a for a in self.annotations])
             self.annotations = self.undo_stack.pop()
+            self._redraw_canvas()
+
+    def _redo(self):
+        if self.redo_stack:
+            self.undo_stack.append([a for a in self.annotations])
+            self.annotations = self.redo_stack.pop()
             self._redraw_canvas()
 
     # ------------------------------------------------------------------
